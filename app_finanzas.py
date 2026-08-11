@@ -7,6 +7,16 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 st.title("Diagnóstico Financiero 📊")
 st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Calcula tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
+
+# Nueva Leyenda del Diagnóstico
+with st.expander("ℹ️ Leyenda: ¿Cómo se evalúa el estatus financiero?"):
+    st.markdown("""
+    El estado de tus finanzas se determina por el porcentaje que representan tus **Gastos Fijos** sobre tus **Ingresos Totales**:
+    - 🟢 **EXCELENTE:** Gastos fijos menores al **50%**.
+    - 🟡 **ACEPTABLE:** Gastos fijos entre el **50%** y **60%**.
+    - 🔴 **CRÍTICO:** Gastos fijos mayores al **60%**.
+    """)
+
 st.divider()
 
 st.header("1. Ingresa tus datos mensuales")
@@ -60,19 +70,18 @@ if st.button("Calcular Diagnóstico", type="primary"):
         def mostrar_simulacion(ingreso_req, nivel):
             st.subheader(f"💡 Plan de Acción para estado: {nivel}")
             
-            # Se usa st.markdown y se escapa el símbolo de dólar (\$) para evitar errores visuales en Streamlit
             st.markdown(f"Para lograr este nivel (manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
             st.write("Con ese nuevo nivel de ingresos, tu distribución automática ideal sería:")
             
-            # MANTENEMOS LOS GASTOS FIJOS EXACTAMENTE IGUAL A LOS INGRESADOS
+            # Bloqueo del monto de gastos fijos
             fijos_sim = gastos_fijos
             
-            # Calculamos el resto basado en la regla 20/10/10
+            # Cálculo del resto basado en la regla 20/10/10 sobre el NUEVO ingreso
             variables_sim = ingreso_req * 0.20
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
-            # Si el nivel es EXCELENTE, el % de gastos fijos será de 50%, por lo que sobrará un porcentaje
+            # Cálculo de excedente si se llega a excelente (ya que fijos serán <= 50%)
             excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
             pct_fijos_real = (fijos_sim / ingreso_req) * 100
             
@@ -91,7 +100,7 @@ if st.button("Calcular Diagnóstico", type="primary"):
                 ]
             }
             
-            # Si sobra dinero por alcanzar el estado EXCELENTE, lo mostramos en la tabla
+            # Agrega el excedente a la tabla si existe
             if excedente_sim > 0.01:
                 pct_excedente = (excedente_sim / ingreso_req) * 100
                 data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
@@ -99,7 +108,7 @@ if st.button("Calcular Diagnóstico", type="primary"):
                 
             df_simulacion = pd.DataFrame(data)
             
-            # Agregamos el signo $ de forma explícita a todos los valores de la tabla
+            # Formateo de moneda
             df_simulacion["Presupuesto Sugerido"] = df_simulacion["Presupuesto Sugerido"].apply(lambda x: f"$ {x:,.2f}")
             
             st.table(df_simulacion)
@@ -109,7 +118,6 @@ if st.button("Calcular Diagnóstico", type="primary"):
             ingreso_aceptable = gastos_fijos / 0.60
             mostrar_simulacion(ingreso_aceptable, "ACEPTABLE")
             
-            # Usamos 50% exacto para marcar la frontera de "Excelente"
             ingreso_excelente = gastos_fijos / 0.50 
             mostrar_simulacion(ingreso_excelente, "EXCELENTE")
 
