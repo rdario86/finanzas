@@ -5,8 +5,8 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Calcula tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
+st.markdown("#### Panel de Control")
+st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
 with st.expander("ℹ️ Leyenda: ¿Cómo se evalúa el estatus financiero?"):
@@ -30,7 +30,7 @@ with col2:
     ahorro = st.number_input("Ahorro (\$)", min_value=0.0, value=50.0, step=10.0)
     fondo_reserva = st.number_input("Fondo de Reserva (\$)", min_value=0.0, value=50.0, step=10.0)
 
-if st.button("Calcular Diagnóstico", type="primary"):
+if st.button("Hacer Diagnóstico", type="primary"):
     if ingresos == 0:
         st.error("Los ingresos deben ser mayores a \$0 para calcular los indicadores.")
     else:
