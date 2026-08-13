@@ -10,10 +10,10 @@ st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la m
 
 # Barra lateral para parámetros globales
 st.sidebar.header("Parámetros Generales")
-ingresos = st.sidebar.number_input("Ingresos Totales", value=1860.0, step=100.0)
+ingresos = st.sidebar.number_input("Ingresos Totales", value=2000.0, step=100.0)
 
 # Cambio: Ahora se ingresa el monto directo en lugar del porcentaje
-presupuesto_mensual = st.sidebar.number_input("Monto destinado al pago de deudas", value=558.0, step=10.0)
+presupuesto_mensual = st.sidebar.number_input("Monto destinado al pago de deudas", value=500.0, step=10.0)
 
 porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
 
@@ -23,7 +23,7 @@ st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual
 st.subheader("Ingresa tus Deudas")
 default_debts = pd.DataFrame({
     "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
-    "Monto Inicial": [250.0, 300.0, 1000.0, 1000.0, 2000.0]
+    "Monto Inicial": [200.0, 400.0, 600.0, 800.0, 1000.0]
 })
 
 edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
