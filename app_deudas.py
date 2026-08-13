@@ -16,62 +16,51 @@ porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.
 
 presupuesto_mensual = ingresos * porcentaje_destinado
 
-# Resumen del presupuesto
-st.write(f"Con un ingreso total de **${ingresos:,.2f}** y destinando el **{porcentaje_destinado*100:.0f}%**, tu presupuesto mensual para el pago de deudas es de **${presupuesto_mensual:,.2f}**.")
+# Resumen del presupuesto (Símbolos de dólar escapados con \$)
+st.write(f"Con un ingreso total de **\${ingresos:,.2f}** y destinando el **{porcentaje_destinado*100:.0f}%**, tu presupuesto mensual para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
 
 st.subheader("Ingresa tus Deudas")
-# DataFrame por defecto basado en tu archivo de Excel
 default_debts = pd.DataFrame({
     "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
     "Monto Inicial": [250.0, 300.0, 1000.0, 1000.0, 2000.0]
 })
 
-# Editor de datos para que el usuario pueda agregar/modificar deudas dinámicamente
 edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
 
 if st.button("Calcular Plan de Pagos", type="primary"):
-    # Filtrar deudas válidas
     df_deudas = edited_debts[edited_debts["Monto Inicial"] > 0].copy()
     
     if df_deudas.empty:
         st.warning("Por favor, ingresa al menos una deuda con un monto mayor a 0.")
     else:
-        # Ordenar por Monto (Principio del método Bola de Nieve)
         df_deudas = df_deudas.sort_values(by="Monto Inicial").reset_index(drop=True)
-        
-        # Calcular los pagos mínimos fijos basados en el monto inicial
         df_deudas["Pago Mínimo"] = df_deudas["Monto Inicial"] * porcentaje_minimo
-        
         total_pago_minimo = df_deudas["Pago Mínimo"].sum()
         
         if presupuesto_mensual < total_pago_minimo:
-            st.error(f"Tu presupuesto mensual (**${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**${total_pago_minimo:,.2f}**). Necesitas aumentar el porcentaje destinado o tus ingresos.")
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el porcentaje destinado o tus ingresos.")
         else:
             excedente_inicial = presupuesto_mensual - total_pago_minimo
-            st.success(f"Tus pagos mínimos suman **${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
+            st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
             
-            # Variables para la simulación
             saldos = df_deudas["Monto Inicial"].values.copy()
             pagos_minimos_fijos = df_deudas["Pago Mínimo"].values.copy()
             n_deudas = len(saldos)
             
             historial_saldos = []
             mes = 1
-            limite_meses = 240 # Límite de 20 años de proyección para evitar loops infinitos
+            limite_meses = 240 
             
-            # Simulación mes a mes
             while np.sum(saldos) > 0 and mes <= limite_meses:
                 dinero_disponible = presupuesto_mensual
                 pagos_del_mes = np.zeros(n_deudas)
                 
-                # 1. Cubrir primero los pagos mínimos de las deudas activas
                 for i in range(n_deudas):
                     if saldos[i] > 0:
                         pago = min(pagos_minimos_fijos[i], saldos[i])
                         pagos_del_mes[i] = pago
                         dinero_disponible -= pago
                 
-                # 2. Asignar el dinero excedente (Bola de Nieve) a la deuda más pequeña
                 for i in range(n_deudas):
                     if saldos[i] > 0 and dinero_disponible > 0:
                         saldo_restante = saldos[i] - pagos_del_mes[i]
@@ -79,21 +68,18 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                         pagos_del_mes[i] += pago_extra
                         dinero_disponible -= pago_extra
                         
-                # 3. Actualizar los saldos al final del mes
                 saldos = saldos - pagos_del_mes
                 historial_saldos.append(saldos.copy())
                 mes += 1
                 
-            # Formatear y mostrar resultados
             columnas_meses = [f"MES {i+1}" for i in range(len(historial_saldos))]
             df_historial = pd.DataFrame(historial_saldos).T
             df_historial.columns = columnas_meses
             
-            # Unir datos iniciales con la proyección
             df_resultado = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
             df_resultado = pd.concat([df_resultado, df_historial], axis=1)
             
-            # Formatear el DataFrame visualmente
+            # Formato de moneda directo para el dataframe de Pandas (aquí no hace falta escapar el $)
             formato_moneda = {col: "${:,.2f}" for col in df_resultado.columns if col != "Deuda"}
             
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
