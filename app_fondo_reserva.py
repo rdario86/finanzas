@@ -33,9 +33,9 @@ col2.metric("Gastos Fijos", f"${gastos_fijos:,.2f}")
 col3.metric("Ahorro Mensual", f"${ahorro_mensual:,.2f}")
 col4.metric("Meta Fondo", f"${meta:,.2f}")
 
-# Explicación de la meta
-st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **${ingreso_req:,.2f}**.")
-st.write(f"Tu meta total de fondo de reserva será de **${meta:,.2f}**.")
+# Explicación de la meta con los símbolos de dólar corregidos (\$)
+st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\${ingreso_req:,.2f}**.")
+st.write(f"Tu meta total de fondo de reserva será de **\${meta:,.2f}**.")
 
 st.subheader("Proyección a 12 Meses")
 
@@ -44,7 +44,7 @@ total_12_meses = ahorro_mensual * 12
 pct_meta = (total_12_meses / meta) if meta > 0 else 0
 rep_meses = (total_12_meses / gastos_fijos) if gastos_fijos > 0 else 0
 
-# Tabla de resultados
+# Tabla de resultados principales
 datos = {
     "Métrica": [
         "Ahorro Mensual", 
@@ -63,16 +63,21 @@ datos = {
 df_resumen = pd.DataFrame(datos)
 st.table(df_resumen)
 
-# Gráfico de proyección acumulada
+# Tabla de proyección acumulada (reemplazando el gráfico)
 st.subheader("Evolución del Fondo de Reserva (Acumulado)")
 
-# Uso de rango numérico (1 a 12) para mantener el orden cronológico
-acum_monto = [ahorro_mensual * i for i in range(1, 13)]
+meses = list(range(1, 13))
+acum_monto = [ahorro_mensual * i for i in meses]
 
-df_grafico = pd.DataFrame({
+df_acumulado = pd.DataFrame({
+    "Mes": meses,
     "Ahorro Acumulado": acum_monto
-}, index=range(1, 13))
+})
 
-df_grafico.index.name = "Mes"
-
-st.line_chart(df_grafico)
+# Se aplica el formato de moneda a los montos de la tabla
+st.dataframe(
+    df_acumulado.set_index("Mes").style.format({
+        "Ahorro Acumulado": "${:,.2f}"
+    }), 
+    use_container_width=True
+)
