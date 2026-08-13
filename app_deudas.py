@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 # Configuración de la página
-st.set_page_config(page_title="Calculadora Bola de Nieve", page_icon="🧮", layout="wide")
+st.set_page_config(page_title="Calculadora Bola de Nieve", page_icon="🧮", layout="centered")
 
 st.title("Calculadora de Deudas: Método Bola de Nieve")
 st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la más pequeña a la más grande, acelerando el proceso al reinvertir los pagos liberados.")
