@@ -30,8 +30,7 @@ col3.metric("Disponible Ahorro", f"${ahorro_monto:,.2f}")
 col4.metric("Meta Fondo", f"${meta:,.2f}")
 
 # Explicación de la meta con formato específico
-st.info(f"Para lograr este nivel de reserva (manteniendo tus gastos fijos en **${gastos_fijos:,.2f}** por {meses_reserva} meses), tu meta de fondo debe ser de al menos **${meta:,.2f}**.")
-
+st.info(f"Para lograr este nivel de reserva (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}** por {meses_reserva} meses), tu meta de fondo debe ser de al menos **\${meta:,.2f}**.")
 st.subheader("Proyección a 12 Meses: Comparación de Estrategias")
 
 # Estrategia 1: Asignación por Monto Fijo (Disponible)
