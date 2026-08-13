@@ -15,12 +15,12 @@ st.title("Construcción de Fondo de Reserva")
 with st.sidebar:
     st.header("Parámetros")
     ingresos = st.number_input("Ingresos Mensuales ($)", min_value=0.0, value=4100.0, step=100.0)
-    porc_gastos = st.slider("% de Gastos Fijos", 0.0, 100.0, 60.0) / 100.0
-    porc_disponible = st.slider("% Disponible para Ahorro", 0.0, 100.0, 10.0) / 100.0
+    gastos_fijos = st.number_input("Gastos Fijos Mensuales ($)", min_value=0.0, value=2460.0, step=100.0)
+    porc_disponible = st.number_input("% Disponible para Ahorro", min_value=0.0, max_value=100.0, value=10.0, step=1.0) / 100.0
     meses_reserva = st.number_input("Meses de Reserva (Meta)", min_value=1, value=3, step=1)
 
-# Cálculos basados exclusivamente en el porcentaje de ingresos
-gastos_fijos = ingresos * porc_gastos
+# Cálculos
+porc_gastos = (gastos_fijos / ingresos) if ingresos > 0 else 0
 ahorro_mensual = ingresos * porc_disponible
 meta = gastos_fijos * meses_reserva
 ingreso_req = gastos_fijos / porc_gastos if porc_gastos > 0 else 0
@@ -33,9 +33,9 @@ col2.metric("Gastos Fijos", f"${gastos_fijos:,.2f}")
 col3.metric("Ahorro Mensual", f"${ahorro_mensual:,.2f}")
 col4.metric("Meta Fondo", f"${meta:,.2f}")
 
-# Explicación con el formato exacto de st.write y símbolos de dólar escapados
-st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\${ingreso_req:,.2f}**.")
-st.write(f"Tu meta total de fondo de reserva será de **\${meta:,.2f}**.")
+# Explicación de la meta
+st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **${ingreso_req:,.2f}**.")
+st.write(f"Tu meta total de fondo de reserva será de **${meta:,.2f}**.")
 
 st.subheader("Proyección a 12 Meses")
 
@@ -65,11 +65,14 @@ st.table(df_resumen)
 
 # Gráfico de proyección acumulada
 st.subheader("Evolución del Fondo de Reserva (Acumulado)")
-meses_labels = [f"Mes {i}" for i in range(1, 13)]
+
+# Uso de rango numérico (1 a 12) para mantener el orden cronológico
 acum_monto = [ahorro_mensual * i for i in range(1, 13)]
 
 df_grafico = pd.DataFrame({
     "Ahorro Acumulado": acum_monto
-}, index=meses_labels)
+}, index=range(1, 13))
+
+df_grafico.index.name = "Mes"
 
 st.line_chart(df_grafico)
