@@ -11,16 +11,16 @@ st.divider()
 
 st.title("Construcción de Fondo de Reserva")
 
-# Barra lateral para el parámetro único de ahorro
+# Barra lateral para parámetros en porcentajes
 with st.sidebar:
     st.header("Parámetros")
     ingresos = st.number_input("Ingresos Mensuales ($)", min_value=0.0, value=4100.0, step=100.0)
-    gastos_fijos = st.number_input("Gastos Fijos Mensuales ($)", min_value=0.0, value=2460.0, step=100.0)
+    porc_gastos = st.number_input("% de Gastos Fijos", min_value=0.0, max_value=100.0, value=60.0, step=1.0) / 100.0
     porc_disponible = st.number_input("% Disponible para Ahorro", min_value=0.0, max_value=100.0, value=10.0, step=1.0) / 100.0
     meses_reserva = st.number_input("Meses de Reserva (Meta)", min_value=1, value=3, step=1)
 
-# Cálculos
-porc_gastos = (gastos_fijos / ingresos) if ingresos > 0 else 0
+# Cálculos dinámicos
+gastos_fijos = ingresos * porc_gastos
 ahorro_mensual = ingresos * porc_disponible
 meta = gastos_fijos * meses_reserva
 ingreso_req = gastos_fijos / porc_gastos if porc_gastos > 0 else 0
