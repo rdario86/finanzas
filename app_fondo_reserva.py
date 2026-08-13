@@ -63,21 +63,17 @@ datos = {
 df_resumen = pd.DataFrame(datos)
 st.table(df_resumen)
 
-# Tabla de proyección acumulada (reemplazando el gráfico)
+# Tabla de proyección acumulada (en formato horizontal)
 st.subheader("Evolución del Fondo de Reserva (Acumulado)")
 
-meses = list(range(1, 13))
-acum_monto = [ahorro_mensual * i for i in meses]
+meses_cols = [f"Mes {i}" for i in range(1, 13)]
+acum_monto = [ahorro_mensual * i for i in range(1, 13)]
 
-df_acumulado = pd.DataFrame({
-    "Mes": meses,
-    "Ahorro Acumulado": acum_monto
-})
+# Se crea el DataFrame pasando los montos como una fila y los meses como columnas
+df_acumulado = pd.DataFrame([acum_monto], columns=meses_cols, index=["Ahorro Acumulado"])
 
-# Se aplica el formato de moneda a los montos de la tabla
+# Se aplica el formato de moneda a todas las celdas
 st.dataframe(
-    df_acumulado.set_index("Mes").style.format({
-        "Ahorro Acumulado": "${:,.2f}"
-    }), 
+    df_acumulado.style.format("${:,.2f}"), 
     use_container_width=True
 )
