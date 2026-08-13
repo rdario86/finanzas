@@ -89,52 +89,43 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             df_resultado = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
             df_resultado = pd.concat([df_resultado, df_historial], axis=1)
             
-            # 3. Creación de la matriz de Tooltips
-            # Debe tener exactamente el mismo tamaño e índices que df_resultado
-            df_tooltips = pd.DataFrame("", index=df_resultado.index, columns=df_resultado.columns)
-            
-            # Llenamos los tooltips solo para las columnas de los meses
-            for col in columnas_meses:
-                # Si se inyectó excedente, muestra el mensaje, si no, lo deja vacío
-                df_tooltips[col] = df_historial_excedentes[col].apply(
-                    lambda x: f"Excedente aplicado: ${x:,.2f}" if x > 0 else ""
-                )
-            
-            # 4. Formatear la tabla final y aplicar los tooltips
-            formato_moneda = {col: "${:,.2f}" for col in df_resultado.columns if col != "Deuda"}
-            
-            # Aplicamos el formato de moneda, los tooltips y OCULTAMOS el índice numérico
-            estilo_final = df_resultado.style.hide(axis="index").format(formato_moneda).set_tooltips(df_tooltips)
-            
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
-            st.write("*(Pasa el cursor sobre los meses para ver el excedente aplicado a cada deuda)*")
+            st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado)*")
             
-            # SOLUCIÓN VISUAL: Generamos la tabla HTML y le aplicamos un diseño CSS personalizado
-            html_tabla = estilo_final.to_html()
+            # Generación de tabla HTML personalizada con tooltips nativos (hover)
+            html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
+            html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
             
-            estilo_css = """
-            <style>
-            .tabla-custom table {
-                font-size: 13px !important; 
-                width: max-content !important; 
-                margin: auto;
-            }
-            .tabla-custom th, .tabla-custom td {
-                padding: 6px 12px !important; 
-                white-space: nowrap !important; 
-                text-align: right !important;
-            }
-            .tabla-custom th:first-child, .tabla-custom td:first-child {
-                text-align: left !important;
-                font-weight: bold;
-            }
-            </style>
-            """
+            # Encabezado
+            html_tabla += '<thead>\n<tr style="background-color: #f0f2f6; border-bottom: 2px solid #ddd; color: #31333F;">\n'
+            for col in df_resultado.columns:
+                align = 'left' if col == 'Deuda' else 'right'
+                html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
+            html_tabla += '</tr>\n</thead>\n'
             
-            # Envolvemos la tabla en un div con scroll horizontal y un borde sutil
-            st.markdown(
-                estilo_css + f'<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px;">{html_tabla}</div>', 
-                unsafe_allow_html=True
-            )
+            # Cuerpo de la tabla
+            html_tabla += '<tbody>\n'
+            for idx, row in df_resultado.iterrows():
+                html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
+                for col in df_resultado.columns:
+                    val = row[col]
+                    if col == 'Deuda':
+                        html_tabla += f'<td style="padding: 8px 12px; text-align: left; font-weight: bold;">{val}</td>\n'
+                    elif col in ['Monto Inicial', 'Pago Mínimo']:
+                        html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
+                    else:
+                        # Revisar si en este mes se usó excedente para esta deuda
+                        exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
+                        if exc_val > 0:
+                            tooltip_text = f"Excedente aplicado: ${exc_val:,.2f}"
+                            # Celda resaltada suavemente con tooltip nativo
+                            html_tabla += f'<td style="padding: 8px 12px; text-align: right; cursor: help; background-color: rgba(24, 144, 255, 0.1);" title="{tooltip_text}">${val:,.2f}</td>\n'
+                        else:
+                            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
+                html_tabla += '</tr>\n'
+            html_tabla += '</tbody>\n</table>\n</div>'
+            
+            # Renderizado seguro en Streamlit
+            st.markdown(html_tabla, unsafe_allow_html=True)
             
             st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
