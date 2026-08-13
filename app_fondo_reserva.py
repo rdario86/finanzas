@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Configuración de la página
-st.set_page_config(page_title="Fondo de Reserva", layout="wide")
+st.set_page_config(page_title="Fondo de Reserva", page_icon="💰", layout="centered")
 
 # Encabezado del reporte
 st.title("Construcción de Fondo de Reserva")
