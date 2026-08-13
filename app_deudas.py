@@ -103,13 +103,38 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             # 4. Formatear la tabla final y aplicar los tooltips
             formato_moneda = {col: "${:,.2f}" for col in df_resultado.columns if col != "Deuda"}
             
-            # Aplicamos el formato de moneda y seteamos la matriz de tooltips
-            estilo_final = df_resultado.style.format(formato_moneda).set_tooltips(df_tooltips)
+            # Aplicamos el formato de moneda, los tooltips y OCULTAMOS el índice numérico
+            estilo_final = df_resultado.style.hide(axis="index").format(formato_moneda).set_tooltips(df_tooltips)
             
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
             st.write("*(Pasa el cursor sobre los meses para ver el excedente aplicado a cada deuda)*")
             
-            # SOLUCIÓN: Renderizamos la tabla estilizada como HTML puro para evitar que se vean las etiquetas <span>
-            st.markdown(estilo_final.to_html(), unsafe_allow_html=True)
+            # SOLUCIÓN VISUAL: Generamos la tabla HTML y le aplicamos un diseño CSS personalizado
+            html_tabla = estilo_final.to_html()
+            
+            estilo_css = """
+            <style>
+            .tabla-custom table {
+                font-size: 13px !important; 
+                width: max-content !important; 
+                margin: auto;
+            }
+            .tabla-custom th, .tabla-custom td {
+                padding: 6px 12px !important; 
+                white-space: nowrap !important; 
+                text-align: right !important;
+            }
+            .tabla-custom th:first-child, .tabla-custom td:first-child {
+                text-align: left !important;
+                font-weight: bold;
+            }
+            </style>
+            """
+            
+            # Envolvemos la tabla en un div con scroll horizontal y un borde sutil
+            st.markdown(
+                estilo_css + f'<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px;">{html_tabla}</div>', 
+                unsafe_allow_html=True
+            )
             
             st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
