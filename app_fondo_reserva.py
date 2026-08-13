@@ -34,7 +34,8 @@ col3.metric("Ahorro Mensual", f"${ahorro_mensual:,.2f}")
 col4.metric("Meta Fondo", f"${meta:,.2f}")
 
 # Explicación de la meta
-st.info(f"Para lograr este nivel de reserva (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}** por {meses_reserva} meses), tu meta de fondo debe ser de al menos **\${meta:,.2f}**.")st.write(f"Tu meta total de fondo de reserva será de **${meta:,.2f}**.")
+st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **${ingreso_req:,.2f}**.")
+st.write(f"Tu meta total de fondo de reserva será de **${meta:,.2f}**.")
 
 st.subheader("Proyección a 12 Meses")
 
