@@ -109,7 +109,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
             st.write("*(Pasa el cursor sobre los meses para ver el excedente aplicado a cada deuda)*")
             
-            # Renderizamos la tabla estilizada
-            st.dataframe(estilo_final, use_container_width=True)
+            # SOLUCIÓN: Renderizamos la tabla estilizada como HTML puro para evitar que se vean las etiquetas <span>
+            st.markdown(estilo_final.to_html(), unsafe_allow_html=True)
             
             st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
