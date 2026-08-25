@@ -1,280 +1,182 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
-st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layout="wide")
+# Configuración de la página
+st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 
-# Encabezado personalizado
-st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
+# --- CONTROL DE ESTADO (SESSION STATE) ---
+if "ingresos" not in st.session_state:
+    st.session_state.ingresos = 1860.0
 
-# Nueva Leyenda del Diagnóstico
-with st.expander("ℹ️ Leyenda: ¿Cómo se evalúa el estatus financiero?"):
-    st.markdown("""
-    El estado de tus finanzas se determina por el porcentaje que representan tus **Gastos Fijos y Variables** sobre tus **Ingresos Totales**:
-    - 🟢 **EXCELENTE:** Gastos fijos y variables son menores al **70%**.
-    - 🟡 **ACEPTABLE:** Gastos fijos y variables entre el **70%** y **80%**.
-    - 🔴 **CRÍTICO:** Gastos fijos y variables mayores al **80%** (O si presentas déficit y asumes deudas).
-    """)
+if "presupuesto_mensual" not in st.session_state:
+    st.session_state.presupuesto_mensual = 1860.0 * 0.30
 
-st.divider()
+def actualizar_presupuesto():
+    st.session_state.presupuesto_mensual = st.session_state.ingresos * 0.30
+# -----------------------------------------
 
-st.header("1. Ingresa tus datos mensuales")
+st.title("🧮 Calculadora de Deudas: Método Bola de Nieve")
+st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la más pequeña a la más grande, acelerando el proceso al reinvertir los pagos liberados.")
 
-col1, col2 = st.columns(2)
-with col1:
-    ingresos = st.number_input("Ingresos Totales (\$)", min_value=0.0, value=1000.0, step=100.0)
-    gastos_fijos = st.number_input("Gastos Fijos (\$)", min_value=0.0, value=650.0, step=50.0)
-    gastos_variables = st.number_input("Gastos Variables (\$)", min_value=0.0, value=200.0, step=50.0)
-with col2:
-    ahorro = st.number_input("Ahorro (\$)", min_value=0.0, value=50.0, step=10.0)
-    fondo_reserva = st.number_input("Fondo de Reserva (\$)", min_value=0.0, value=50.0, step=10.0)
+# --- BARRA LATERAL ---
+st.sidebar.header("Parámetros Generales")
 
-if st.button("Hacer Diagnóstico", type="primary"):
+ingresos = st.sidebar.number_input(
+    "Ingresos Totales", 
+    step=100.0,
+    key="ingresos", 
+    on_change=actualizar_presupuesto 
+)
+
+limite_presupuesto = ingresos * 0.30
+
+presupuesto_mensual = st.sidebar.number_input(
+    "Monto destinado al pago de deudas", 
+    max_value=float(limite_presupuesto), 
+    step=10.0,
+    key="presupuesto_mensual", 
+    help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
+)
+
+porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
+# ---------------------
+
+# Resumen del presupuesto
+st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
+
+st.subheader("Ingresa tus Deudas")
+default_debts = pd.DataFrame({
+    "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
+    "Monto Inicial": [250.0, 300.0, 1000.0, 1000.0, 2000.0]
+})
+
+edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
+
+if st.button("Calcular Plan de Pagos", type="primary"):
+    df_deudas = edited_debts[edited_debts["Monto Inicial"] > 0].copy()
     
-    if ingresos == 0:
-        st.error("Los ingresos deben ser mayores a \$0 para calcular los indicadores.")
+    if df_deudas.empty:
+        st.warning("Por favor, ingresa al menos una deuda con un monto mayor a 0.")
     else:
-        st.divider()
-        st.header("2. Resultados del Diagnóstico")
+        df_deudas = df_deudas.sort_values(by="Monto Inicial").reset_index(drop=True)
+        df_deudas["Pago Mínimo"] = df_deudas["Monto Inicial"] * porcentaje_minimo
+        total_pago_minimo = df_deudas["Pago Mínimo"].sum()
         
-        # Sumatoria de todas las salidas
-        total_egresos = gastos_fijos + gastos_variables + ahorro + fondo_reserva
-        
-        # Cálculo de balance
-        balance = ingresos - total_egresos
-        
-        if balance > 0:
-            st.success(f"**EXCEDENTE:** Tienes un saldo a favor de **\$ {balance:,.2f}**")
-        elif balance < 0:
-            deuda_estimada = abs(balance)
-            st.error(f"**DÉFICIT DETECTADO:** Tus salidas superan tus ingresos. Te faltan **\$ {deuda_estimada:,.2f}**, lo que indica que estás asumiendo **DEUDAS** para poder cubrir tus compromisos.")
+        if presupuesto_mensual < total_pago_minimo:
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el monto destinado o tus ingresos.")
         else:
-            st.info(f"**PUNTO DE EQUILIBRIO:** Tus ingresos cubren exactamente tus salidas (\$ 0.00).")
-
-        # Estatus de las finanzas
-        total_fijos_vars = gastos_fijos + gastos_variables
-        pct_fijos_vars = (total_fijos_vars / ingresos) * 100
-        
-        if balance < 0:
-            estado = "CRÍTICO"
-            color = "#dc3545"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero asumes deudas."
-        elif pct_fijos_vars < 70:
-            estado = "EXCELENTE"
-            color = "#28a745"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
-        elif pct_fijos_vars <= 80:
-            estado = "ACEPTABLE"
-            color = "#ffc107"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
-        else:
-            estado = "CRÍTICO"
-            color = "#dc3545"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
-
-        st.markdown(mensaje_pct)
-        st.markdown(f"Estado de tus finanzas: <strong style='color:{color}; font-size: 1.2em;'>{estado}</strong>", unsafe_allow_html=True)
-
-        st.divider()
-
-        # Función de planes de acción con parámetro de criticidad
-        def mostrar_planes(nivel, target_pct, es_critico=False):
-            st.subheader(f"💡 Plan de Acción para lograr estado: {nivel}")
+            excedente_inicial = presupuesto_mensual - total_pago_minimo
+            st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
             
-            # REGLA PARA EXCELENTE: Dos opciones (siempre orientadas a aumento de ingresos)
-            if nivel == "EXCELENTE":
-                col_a, col_b = st.columns(2)
-                
-                # --- OPCIÓN A: AUMENTAR INGRESOS ---
-                with col_a:
-                    ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
-                    st.markdown(f"**Opción A: Elevar Ingresos**")
-                    st.write(f"Para que tus gastos actuales sean el {target_pct*100:.0f}%, debes ganar **\$ {ingreso_req:,.2f}**:")
-                    
-                    ahorro_sim = ingreso_req * 0.10
-                    fondo_sim = ingreso_req * 0.10
-                    pct_fijos_real = (gastos_fijos / ingreso_req) * 100 if ingreso_req > 0 else 0
-                    pct_vars_real = (gastos_variables / ingreso_req) * 100 if ingreso_req > 0 else 0
-                    excedente = ingreso_req - (gastos_fijos + gastos_variables + ahorro_sim + fondo_sim)
-                    
-                    cats = [f"Fijos ({pct_fijos_real:.1f}%)", f"Variables ({pct_vars_real:.1f}%)", "Ahorro (10%)", "Inversión (10%)"]
-                    montos = [gastos_fijos, gastos_variables, ahorro_sim, fondo_sim]
-                    
-                    if excedente > 0.01:
-                        cats.append(f"Excedente ({(excedente/ingreso_req)*100:.1f}%)")
-                        montos.append(excedente)
-                        
-                    df_a = pd.DataFrame({"Categoría": cats, "Presupuesto": montos})
-                    df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                    st.table(df_a)
-
-                # --- OPCIÓN B: HÍBRIDA SOBRE INGRESO DE OPCIÓN A ---
-                with col_b:
-                    st.markdown(f"**Opción B: Estructura Híbrida**")
-                    st.write(f"Con el ingreso de la Opción A (**\$ {ingreso_req:,.2f}**), manteniendo tus Fijos intactos y aplicando 20/10/10:")
-                    
-                    fijos_sim_b = gastos_fijos
-                    var_sim_b = ingreso_req * 0.20
-                    ahorro_sim_b = ingreso_req * 0.10
-                    fondo_sim_b = ingreso_req * 0.10
-                    
-                    pct_fijos_b = (fijos_sim_b / ingreso_req) * 100 if ingreso_req > 0 else 0
-                    excedente_b = ingreso_req - (fijos_sim_b + var_sim_b + ahorro_sim_b + fondo_sim_b)
-                    
-                    cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", "Variables (20.0%)", "Ahorro (10.0%)", "Inversión (10.0%)"]
-                    montos_b = [fijos_sim_b, var_sim_b, ahorro_sim_b, fondo_sim_b]
-                    
-                    if excedente_b > 0.01:
-                        cats_b.append(f"Excedente Libre ({(excedente_b/ingreso_req)*100:.1f}%)")
-                        montos_b.append(excedente_b)
-                    elif excedente_b < -0.01:
-                        cats_b.append(f"Déficit Matemático ({(abs(excedente_b)/ingreso_req)*100:.1f}%)")
-                        montos_b.append(excedente_b)
-                        
-                    df_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
-                    df_b["Presupuesto"] = df_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                    st.table(df_b)
-                
-            # REGLA PARA ACEPTABLE
-            else:
-                # SI ESTÁ CRÍTICO, OMITIMOS LA OPCIÓN DE RECORTAR GASTOS CON INGRESO ACTUAL
-                if es_critico:
-                    col_a, col_b = st.columns(2)
-                    
-                    # --- OPCIÓN A (ANTES B): AUMENTAR INGRESOS ---
-                    with col_a:
-                        ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
-                        st.markdown(f"**Opción A: Elevar Ingresos**")
-                        st.write(f"Para que tus gastos actuales sean el {target_pct*100:.0f}%, debes ganar **\$ {ingreso_req:,.2f}**:")
-                        
-                        ahorro_b = ingreso_req * 0.10
-                        fondo_b = ingreso_req * 0.10
-                        pct_fijos_b = (gastos_fijos / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        pct_vars_b = (gastos_variables / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        excedente_b = ingreso_req - (gastos_fijos + gastos_variables + ahorro_b + fondo_b)
-                        
-                        cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", f"Variables ({pct_vars_b:.1f}%)", "Ahorro (10%)", "Inversión (10%)"]
-                        montos_b = [gastos_fijos, gastos_variables, ahorro_b, fondo_b]
-                        
-                        if excedente_b > 0.01:
-                            cats_b.append(f"Excedente ({(excedente_b/ingreso_req)*100:.1f}%)")
-                            montos_b.append(excedente_b)
-                        
-                        df_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
-                        df_b["Presupuesto"] = df_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                        st.table(df_b)
-
-                    # --- OPCIÓN B (ANTES C): HÍBRIDA SOBRE NUEVO INGRESO ---
-                    with col_b:
-                        st.markdown(f"**Opción B: Estructura Híbrida**")
-                        st.write(f"Con el ingreso de Opción A (**\$ {ingreso_req:,.2f}**), manteniendo tus Fijos intactos y aplicando 20/10/10:")
-                        
-                        fijos_c = gastos_fijos
-                        var_c = ingreso_req * 0.20
-                        ahorro_c = ingreso_req * 0.10
-                        fondo_c = ingreso_req * 0.10
-                        
-                        pct_fijos_c = (fijos_c / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        excedente_c = ingreso_req - (fijos_c + var_c + ahorro_c + fondo_c)
-                        
-                        cats_c = [f"Fijos ({pct_fijos_c:.1f}%)", "Variables (20.0%)", "Ahorro (10.0%)", "Inversión (10.0%)"]
-                        montos_c = [fijos_c, var_c, ahorro_c, fondo_c]
-                        
-                        if excedente_c > 0.01:
-                            cats_c.append(f"Excedente Libre ({(excedente_c/ingreso_req)*100:.1f}%)")
-                            montos_c.append(excedente_c)
-                        elif excedente_c < -0.01:
-                            cats_c.append(f"Déficit Matemático ({(abs(excedente_c)/ingreso_req)*100:.1f}%)")
-                            montos_c.append(excedente_c)
-                            
-                        df_c = pd.DataFrame({"Categoría": cats_c, "Presupuesto": montos_c})
-                        df_c["Presupuesto"] = df_c["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                        st.table(df_c)
-                        
-                # SI ESTÁ ACEPTABLE, MANTENEMOS LAS TRES OPCIONES ORIGINALES
-                else:
-                    col_a, col_b, col_c = st.columns(3)
-                    
-                    # --- OPCIÓN A: REESTRUCTURAR GASTOS ---
-                    with col_a:
-                        st.markdown(f"**Opción A: Ajustar Gastos**")
-                        st.write(f"Manteniendo tu ingreso de **\$ {ingresos:,.2f}** y tus Fijos bloqueados:")
-                        
-                        fijos_a = gastos_fijos
-                        ahorro_a = ingresos * 0.10
-                        fondo_a = ingresos * 0.10
-                        var_a = ingresos - fijos_a - ahorro_a - fondo_a
-                        
-                        if var_a < 0:
-                            st.error("⚠️ Gastos fijos muy altos. Matemáticamente imposible sin elevar ingresos.")
-                        
-                        pct_fijos_a = (fijos_a / ingresos) * 100 if ingresos > 0 else 0
-                        pct_var_a = (var_a / ingresos) * 100 if ingresos > 0 else 0
-                        
-                        df_a = pd.DataFrame({
-                            "Categoría": [f"Fijos ({pct_fijos_a:.1f}%)", f"Variables Ajustados ({pct_var_a:.1f}%)", "Ahorro (10%)", "Inversión (10%)"],
-                            "Presupuesto": [fijos_a, var_a, ahorro_a, fondo_a]
-                        })
-                        df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                        st.table(df_a)
-
-                    # --- OPCIÓN B: AUMENTAR INGRESOS ---
-                    with col_b:
-                        ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
-                        st.markdown(f"**Opción B: Elevar Ingresos**")
-                        st.write(f"Para que tus gastos actuales sean el {target_pct*100:.0f}%, debes ganar **\$ {ingreso_req:,.2f}**:")
-                        
-                        ahorro_b = ingreso_req * 0.10
-                        fondo_b = ingreso_req * 0.10
-                        pct_fijos_b = (gastos_fijos / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        pct_vars_b = (gastos_variables / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        excedente_b = ingreso_req - (gastos_fijos + gastos_variables + ahorro_b + fondo_b)
-                        
-                        cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", f"Variables ({pct_vars_b:.1f}%)", "Ahorro (10%)", "Inversión (10%)"]
-                        montos_b = [gastos_fijos, gastos_variables, ahorro_b, fondo_b]
-                        
-                        if excedente_b > 0.01:
-                            cats_b.append(f"Excedente ({(excedente_b/ingreso_req)*100:.1f}%)")
-                            montos_b.append(excedente_b)
-                        
-                        df_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
-                        df_b["Presupuesto"] = df_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                        st.table(df_b)
-
-                    # --- OPCIÓN C: HÍBRIDA SOBRE INGRESO DE OPCIÓN B ---
-                    with col_c:
-                        st.markdown(f"**Opción C: Estructura Híbrida**")
-                        st.write(f"Con el ingreso de Opción B (**\$ {ingreso_req:,.2f}**), manteniendo tus Fijos intactos y aplicando 20/10/10:")
-                        
-                        fijos_c = gastos_fijos
-                        var_c = ingreso_req * 0.20
-                        ahorro_c = ingreso_req * 0.10
-                        fondo_c = ingreso_req * 0.10
-                        
-                        pct_fijos_c = (fijos_c / ingreso_req) * 100 if ingreso_req > 0 else 0
-                        excedente_c = ingreso_req - (fijos_c + var_c + ahorro_c + fondo_c)
-                        
-                        cats_c = [f"Fijos ({pct_fijos_c:.1f}%)", "Variables (20.0%)", "Ahorro (10.0%)", "Inversión (10.0%)"]
-                        montos_c = [fijos_c, var_c, ahorro_c, fondo_c]
-                        
-                        if excedente_c > 0.01:
-                            cats_c.append(f"Excedente Libre ({(excedente_c/ingreso_req)*100:.1f}%)")
-                            montos_c.append(excedente_c)
-                        elif excedente_c < -0.01:
-                            cats_c.append(f"Déficit Matemático ({(abs(excedente_c)/ingreso_req)*100:.1f}%)")
-                            montos_c.append(excedente_c)
-                            
-                        df_c = pd.DataFrame({"Categoría": cats_c, "Presupuesto": montos_c})
-                        df_c["Presupuesto"] = df_c["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                        st.table(df_c)
-
-        # Disparador de recomendaciones
-        if estado == "CRÍTICO":
-            st.warning("⚠️ **Estrategia sugerida:** Dado tu estado actual, la prioridad técnica no es recortar, sino inyectar capital. Aquí tienes los números objetivo:")
-            mostrar_planes("ACEPTABLE", 0.80, es_critico=True)
-            st.divider()
-            mostrar_planes("EXCELENTE", 0.70, es_critico=True)
+            saldos = df_deudas["Monto Inicial"].values.copy()
+            pagos_minimos_fijos = df_deudas["Pago Mínimo"].values.copy()
+            n_deudas = len(saldos)
             
-        elif estado == "ACEPTABLE":
-            mostrar_planes("EXCELENTE", 0.70)
+            historial_saldos = []
+            historial_excedentes = [] 
+            mes = 1
+            limite_meses = 240 
+            
+            while np.sum(saldos) > 0 and mes <= limite_meses:
+                dinero_disponible = presupuesto_mensual
+                pagos_del_mes = np.zeros(n_deudas)
+                excedentes_del_mes = np.zeros(n_deudas)
+                
+                for i in range(n_deudas):
+                    if saldos[i] > 0:
+                        pago = min(pagos_minimos_fijos[i], saldos[i])
+                        pagos_del_mes[i] = pago
+                        dinero_disponible -= pago
+                
+                for i in range(n_deudas):
+                    if saldos[i] > 0 and dinero_disponible > 0:
+                        saldo_restante = saldos[i] - pagos_del_mes[i]
+                        pago_extra = min(saldo_restante, dinero_disponible)
+                        pagos_del_mes[i] += pago_extra
+                        excedentes_del_mes[i] = pago_extra 
+                        dinero_disponible -= pago_extra
+                        
+                saldos = saldos - pagos_del_mes
+                historial_saldos.append(saldos.copy())
+                historial_excedentes.append(excedentes_del_mes.copy())
+                mes += 1
+                
+            columnas_meses = [f"MES {i+1}" for i in range(len(historial_saldos))]
+            
+            df_historial = pd.DataFrame(historial_saldos).T
+            df_historial.columns = columnas_meses
+            
+            df_historial_excedentes = pd.DataFrame(historial_excedentes).T
+            df_historial_excedentes.columns = columnas_meses
+            
+            df_resultado = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
+            df_resultado = pd.concat([df_resultado, df_historial], axis=1)
+            
+            st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
+            st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado individualmente)*")
+            
+            # Generación de tabla HTML personalizada
+            html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
+            html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
+            
+            # Encabezado
+            html_tabla += '<thead>\n<tr style="background-color: #f0f2f6; border-bottom: 2px solid #ddd; color: #31333F;">\n'
+            for col in df_resultado.columns:
+                align = 'left' if col == 'Deuda' else 'right'
+                html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
+            html_tabla += '</tr>\n</thead>\n'
+            
+            # Cuerpo de la tabla
+            html_tabla += '<tbody>\n'
+            for idx, row in df_resultado.iterrows():
+                html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
+                for col in df_resultado.columns:
+                    val = row[col]
+                    if col == 'Deuda':
+                        html_tabla += f'<td style="padding: 8px 12px; text-align: left; font-weight: bold;">{val}</td>\n'
+                    elif col in ['Monto Inicial', 'Pago Mínimo']:
+                        html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
+                    else:
+                        exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
+                        if exc_val > 0:
+                            tooltip_text = f"Excedente aplicado: ${exc_val:,.2f}"
+                            html_tabla += f'<td style="padding: 8px 12px; text-align: right; cursor: help; background-color: rgba(24, 144, 255, 0.1);" title="{tooltip_text}">${val:,.2f}</td>\n'
+                        else:
+                            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
+                html_tabla += '</tr>\n'
+            html_tabla += '</tbody>\n'
+            
+            # --- SECCIÓN DE PIE DE PÁGINA (TFOOT) ---
+            html_tabla += '<tfoot>\n'
+            
+            # 1. Fila de Total de Saldos
+            html_tabla += '<tr style="border-top: 2px solid #a6a8b6; background-color: #f0f2f6; font-weight: bold; color: #31333F;">\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL SALDOS</td>\n'
+            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Monto Inicial"].sum():,.2f}</td>\n'
+            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Pago Mínimo"].sum():,.2f}</td>\n'
+            
+            for col in columnas_meses:
+                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado[col].sum():,.2f}</td>\n'
+            html_tabla += '</tr>\n'
+            
+            # 2. Fila de Excedente Disponible Aplicado
+            html_tabla += '<tr style="background-color: #e8f4fd; font-weight: bold; color: #0056b3;">\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: left;">EXCEDENTE APLICADO</td>\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
+            
+            for col in columnas_meses:
+                # Sumamos todo el excedente utilizado en ese mes específico
+                total_excedente_mes = df_historial_excedentes[col].sum()
+                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${total_excedente_mes:,.2f}</td>\n'
+            html_tabla += '</tr>\n'
+            
+            html_tabla += '</tfoot>\n'
+            # ----------------------------------------
+            
+            html_tabla += '</table>\n</div>'
+            
+            st.markdown(html_tabla, unsafe_allow_html=True)
+            
+            st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
