@@ -79,7 +79,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función de planes de acción con la nueva lógica condicional
+        # Función de planes de acción
         def mostrar_planes(nivel, target_pct):
             st.subheader(f"💡 Plan de Acción para lograr estado: {nivel}")
             
@@ -113,14 +113,30 @@ if st.button("Hacer Diagnóstico", type="primary"):
             else:
                 col_a, col_b = st.columns(2)
                 
-                # --- OPCIÓN A: REESTRUCTURAR GASTOS ---
+                # --- OPCIÓN A: REESTRUCTURAR GASTOS (BLOQUEANDO GASTOS FIJOS) ---
                 with col_a:
                     st.markdown(f"**Opción A: Reestructurar Gastos**")
-                    st.write(f"Manteniendo tus ingresos actuales de **\$ {ingresos:,.2f}**, tu distribución debe ser:")
+                    st.write(f"Manteniendo tus ingresos de **\$ {ingresos:,.2f}** y tus Gastos Fijos bloqueados, tu distribución debe ser:")
+                    
+                    # 1. Los gastos fijos se mantienen exactamente igual
+                    fijos_sim_a = gastos_fijos
+                    
+                    # 2. Se aparta el 10% para ahorro y 10% para fondo del ingreso actual
+                    ahorro_sim_a = ingresos * 0.10
+                    fondo_sim_a = ingresos * 0.10
+                    
+                    # 3. Los gastos variables asumen el recorte (lo que sobra del ingreso)
+                    variables_sim_a = ingresos - fijos_sim_a - ahorro_sim_a - fondo_sim_a
+                    
+                    if variables_sim_a < 0:
+                        st.error("⚠️ Tus Gastos Fijos actuales son tan altos que matemáticamente no queda dinero para gastos variables. Necesitas aumentar ingresos (Opción B).")
+                    
+                    pct_fijos_a = (fijos_sim_a / ingresos) * 100 if ingresos > 0 else 0
+                    pct_vars_a = (variables_sim_a / ingresos) * 100 if ingresos > 0 else 0
                     
                     df_opcion_a = pd.DataFrame({
-                        "Categoría": ["Gastos Fijos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Fondo/Inversión (10%)"],
-                        "Presupuesto": [ingresos * 0.60, ingresos * 0.20, ingresos * 0.10, ingresos * 0.10]
+                        "Categoría": [f"Gastos Fijos ({pct_fijos_a:.1f}%)", f"Gastos Variables Ajustados ({pct_vars_a:.1f}%)", "Ahorro (10.0%)", "Fondo/Inversión (10.0%)"],
+                        "Presupuesto": [fijos_sim_a, variables_sim_a, ahorro_sim_a, fondo_sim_a]
                     })
                     df_opcion_a["Presupuesto"] = df_opcion_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                     st.table(df_opcion_a)
@@ -130,13 +146,13 @@ if st.button("Hacer Diagnóstico", type="primary"):
                         st.info("ℹ️ **Nota:** Como presentas déficit y deudas, el 20% destinado a ahorro e inversión debe ser usado exclusivamente para pagar deudas hasta saldar las mismas.")
                         
                         if abs(balance) > (ingresos * 0.20):
-                            st.warning("⚠️ **Alerta:** Tus deudas mensuales exceden el 20% de tus ingresos. Debes considerar recortar aún más tus gastos variables para poder solventarlas.")
+                            st.warning("⚠️ **Alerta:** Tus deudas mensuales exceden el 20% de tus ingresos. Debes recortar radicalmente tus gastos variables o buscar más ingresos.")
 
                 # --- OPCIÓN B: AUMENTAR INGRESOS ---
                 with col_b:
                     ingreso_requerido = total_fijos_vars / target_pct if target_pct > 0 else 0
                     st.markdown(f"**Opción B: Aumentar Ingresos**")
-                    st.write(f"Manteniendo tus gastos iniciales, debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
+                    st.write(f"Manteniendo tus gastos iniciales (fijos y variables), debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
                     
                     ahorro_sim = ingreso_requerido * 0.10
                     fondo_sim = ingreso_requerido * 0.10
