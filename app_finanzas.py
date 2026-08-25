@@ -80,6 +80,15 @@ if st.button("Generar Diagnóstico", type="primary"):
             st.write("Para que tus fijos representen el **60%**, tu ingreso mínimo requerido debe ser:")
             st.markdown(f"<h3 style='color:#ffc107;'>$ {ingreso_req_aceptable:,.2f}</h3>", unsafe_allow_html=True)
             
+            # Comparación con el ingreso actual
+            dif_ace = ingresos - ingreso_req_aceptable
+            if dif_ace > 0:
+                st.success(f"✅ Tus ingresos actuales superan esta meta por **\$ {dif_ace:,.2f}**.")
+            elif dif_ace < 0:
+                st.warning(f"⚠️ Te faltan **\$ {abs(dif_ace):,.2f}** mensuales para alcanzar esta meta.")
+            else:
+                st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
+            
             var_ace = ingreso_req_aceptable * 0.20
             aho_ace = ingreso_req_aceptable * 0.10
             inv_ace = ingreso_req_aceptable * 0.10
@@ -98,6 +107,15 @@ if st.button("Generar Diagnóstico", type="primary"):
             st.markdown(f"### 🟢 Meta EXCELENTE")
             st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
             st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
+            
+            # Comparación con el ingreso actual
+            dif_exc = ingresos - ingreso_req_excelente
+            if dif_exc > 0:
+                st.success(f"✅ Tus ingresos actuales superan esta meta por **\$ {dif_exc:,.2f}**.")
+            elif dif_exc < 0:
+                st.warning(f"⚠️ Te faltan **\$ {abs(dif_exc):,.2f}** mensuales para alcanzar esta meta.")
+            else:
+                st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
             
             var_exc = ingreso_req_excelente * 0.20
             aho_exc = ingreso_req_excelente * 0.10
