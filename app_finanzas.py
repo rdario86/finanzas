@@ -59,7 +59,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
         if balance < 0:
             estado = "CRÍTICO"
             color = "#dc3545"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero asumes deudas."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
         elif pct_fijos_vars < 70:
             estado = "EXCELENTE"
             color = "#28a745"
