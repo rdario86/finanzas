@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layout="wide")
 
@@ -62,3 +63,24 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.markdown(mensaje)
         st.markdown(f"Estatus actual de tu estructura: <strong style='color:{color}; font-size: 1.3em;'>{estado}</strong>", unsafe_allow_html=True)
+
+        st.divider()
+        
+        # --- NUEVO DESGLOSE DE FLUJO DE CAJA ---
+        st.subheader("📊 Desglose de tu Flujo de Caja")
+        st.write("Así se distribuye actualmente tu dinero en base a tus salidas totales:")
+        
+        pct_vars = (gastos_variables / ingreso_actual_implicito) * 100
+        pct_ahorro = (ahorro / ingreso_actual_implicito) * 100
+        pct_fondo = (fondo_reserva / ingreso_actual_implicito) * 100
+        
+        df_desglose = pd.DataFrame({
+            "Categoría": ["Gastos Fijos", "Gastos Variables", "Ahorro", "Fondo/Inversión"],
+            "Monto": [gastos_fijos, gastos_variables, ahorro, fondo_reserva],
+            "Peso en tu Flujo (%)": [f"{pct_fijos:.1f}%", f"{pct_vars:.1f}%", f"{pct_ahorro:.1f}%", f"{pct_fondo:.1f}%"]
+        })
+        
+        # Formateo de moneda para la columna de Monto
+        df_desglose["Monto"] = df_desglose["Monto"].apply(lambda x: f"$ {x:,.2f}")
+        
+        st.table(df_desglose)
