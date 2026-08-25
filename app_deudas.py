@@ -39,22 +39,8 @@ presupuesto_mensual = st.sidebar.number_input(
     help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
 )
 
-# --- NUEVA LÓGICA DEL MONTO MÍNIMO ---
-monto_minimo_total = st.sidebar.number_input(
-    "Monto Total de Pagos Mínimos", 
-    value=182.0, 
-    step=10.0,
-    help="Ingresa la suma de los pagos mínimos obligatorios de todas tus deudas."
-)
-
-# Cálculo y visualización del porcentaje que representa
-if presupuesto_mensual > 0:
-    porcentaje_representado = (monto_minimo_total / presupuesto_mensual) * 100
-else:
-    porcentaje_representado = 0.0
-
-st.sidebar.caption(f"Representa el **{porcentaje_representado:.1f}%** del monto destinado a deudas.")
-# -------------------------------------
+porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
+# ---------------------
 
 # Resumen del presupuesto
 st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
@@ -74,15 +60,11 @@ if st.button("Calcular Plan de Pagos", type="primary"):
         st.warning("Por favor, ingresa al menos una deuda con un monto mayor a 0.")
     else:
         df_deudas = df_deudas.sort_values(by="Monto Inicial").reset_index(drop=True)
-        
-        # --- NUEVA DISTRIBUCIÓN DEL PAGO MÍNIMO ---
-        suma_total_deudas = df_deudas["Monto Inicial"].sum()
-        df_deudas["Pago Mínimo"] = (df_deudas["Monto Inicial"] / suma_total_deudas) * monto_minimo_total
+        df_deudas["Pago Mínimo"] = df_deudas["Monto Inicial"] * porcentaje_minimo
         total_pago_minimo = df_deudas["Pago Mínimo"].sum()
-        # -------------------------------------------
         
         if presupuesto_mensual < total_pago_minimo:
-            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar tus ingresos.")
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el monto destinado o tus ingresos.")
         else:
             excedente_inicial = presupuesto_mensual - total_pago_minimo
             st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
@@ -185,6 +167,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
             
             for col in columnas_meses:
+                # Sumamos todo el excedente utilizado en ese mes específico
                 total_excedente_mes = df_historial_excedentes[col].sum()
                 html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${total_excedente_mes:,.2f}</td>\n'
             html_tabla += '</tr>\n'
@@ -196,4 +179,4 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             
             st.markdown(html_tabla, unsafe_allow_html=True)
             
-            st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+            st.info(f"Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
