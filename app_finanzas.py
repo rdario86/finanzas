@@ -137,27 +137,37 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                 st.table(df_a)
 
-            # --- OPCIÓN B: EXCELENTE (Mismo ingreso, forzando Variables al 20%) ---
+            # --- OPCIÓN B: EXCELENTE (Forzando Fijos + Variables <= 70%) ---
             with col_b:
                 st.markdown("**Opción B: Nivel EXCELENTE**")
-                st.write(f"Con el ingreso de la Opción A (**\$ {ingreso_req_a:,.2f}**), ajustando tus gastos variables al 20%:")
                 
-                var_b = ingreso_req_a * 0.20
-                ahorro_b = ingreso_req_a * 0.10
-                fondo_b = ingreso_req_a * 0.10
-                pct_fijos_b = (gastos_fijos / ingreso_req_a) * 100 if ingreso_req_a > 0 else 0
+                # Validación del Candado Matemático: 
+                # Si Variables = 20%, los Fijos no pueden ser más del 50% para cumplir el límite del 70%.
+                ingreso_minimo_excelente = gastos_fijos / 0.50 if gastos_fijos > 0 else 0
                 
-                # Excedente o déficit matemático basado en el recorte/aumento de variables
-                excedente_b = ingreso_req_a - (gastos_fijos + var_b + ahorro_b + fondo_b)
+                if ingreso_req_a >= ingreso_minimo_excelente:
+                    ingreso_req_b = ingreso_req_a
+                    st.write(f"Con el mismo ingreso de la Opción A (**\$ {ingreso_req_b:,.2f}**), ajustando tus gastos variables al 20%:")
+                else:
+                    ingreso_req_b = ingreso_minimo_excelente
+                    st.write(f"Para asegurar la regla del 70% (ya que tus Fijos actuales son altos), debes ganar **\$ {ingreso_req_b:,.2f}**:")
+                
+                var_b = ingreso_req_b * 0.20
+                ahorro_b = ingreso_req_b * 0.10
+                fondo_b = ingreso_req_b * 0.10
+                pct_fijos_b = (gastos_fijos / ingreso_req_b) * 100 if ingreso_req_b > 0 else 0
+                
+                excedente_b = ingreso_req_b - (gastos_fijos + var_b + ahorro_b + fondo_b)
                 
                 cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", "Variables (20.0%)", "Ahorro (10.0%)", "Inversión (10.0%)"]
                 montos_b = [gastos_fijos, var_b, ahorro_b, fondo_b]
                 
                 if excedente_b > 0.01:
-                    cats_b.append(f"Excedente Libre ({(excedente_b/ingreso_req_a)*100:.1f}%)")
+                    cats_b.append(f"Excedente Libre ({(excedente_b/ingreso_req_b)*100:.1f}%)")
                     montos_b.append(excedente_b)
                 elif excedente_b < -0.01:
-                    cats_b.append(f"Déficit Matemático ({(abs(excedente_b)/ingreso_req_a)*100:.1f}%)")
+                    # En teoría, con el candado matemático este escenario no debería ocurrir, pero se mantiene como seguro
+                    cats_b.append(f"Déficit Matemático ({(abs(excedente_b)/ingreso_req_b)*100:.1f}%)")
                     montos_b.append(excedente_b)
                     
                 df_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
