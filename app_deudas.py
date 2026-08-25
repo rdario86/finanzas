@@ -64,7 +64,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
         total_pago_minimo = df_deudas["Pago Mínimo"].sum()
         
         if presupuesto_mensual < total_pago_minimo:
-            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el monto destinado o tus ingresos.")
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar tus ingresos.")
         else:
             excedente_inicial = presupuesto_mensual - total_pago_minimo
             st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
