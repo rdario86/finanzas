@@ -53,7 +53,7 @@ if st.button("Generar Diagnóstico", type="primary"):
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio (>= 50% y <= 60%)."
-            recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y optimiza el resto de tu dinero para potenciar tu ahorro e inversión."
+            recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel (EXCELENTE)."
             
         elif pct_fijos < 50:
             estado = "EXCELENTE"
@@ -66,48 +66,79 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.markdown(recomendacion)
         
         # ==========================================================
-        # CÁLCULO: METAS DE INGRESO CONDICIONALES (SOLO PARA CRÍTICO)
+        # CÁLCULO: METAS DE INGRESO CONDICIONALES
         # ==========================================================
-        if estado == "CRÍTICO":
+        if estado != "EXCELENTE":
             st.divider()
             st.header("3. Plan de Acción: Metas de Ingreso")
-            st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para sanear tu estructura:".format(gastos_fijos))
             
-            col_a, col_b = st.columns(2)
-            
-            with col_a:
-                # Meta Aceptable (Fijos al 60%)
-                ingreso_req_aceptable = gastos_fijos / 0.60
+            if estado == "CRÍTICO":
+                st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para sanear tu estructura:".format(gastos_fijos))
+                col_a, col_b = st.columns(2)
                 
-                st.markdown(f"### 🟡 Meta ACEPTABLE")
-                st.write("Para que tus fijos representen el **60%**, tu ingreso mínimo requerido debe ser:")
-                st.markdown(f"<h3 style='color:#ffc107;'>$ {ingreso_req_aceptable:,.2f}</h3>", unsafe_allow_html=True)
-                
-                dif_ace = ingresos - ingreso_req_aceptable
-                if dif_ace > 0:
-                    st.success(f"✅ Tus ingresos actuales superan esta meta por **\$ {dif_ace:,.2f}**.")
-                elif dif_ace < 0:
-                    st.warning(f"⚠️ Te faltan **\$ {abs(dif_ace):,.2f}** mensuales para alcanzar esta meta.")
-                else:
-                    st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
-                
-                var_ace = ingreso_req_aceptable * 0.20
-                aho_ace = ingreso_req_aceptable * 0.10
-                inv_ace = ingreso_req_aceptable * 0.10
-                
-                df_ace = pd.DataFrame({
-                    "Distribución Ideal": ["Gastos Fijos (60%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)"],
-                    "Monto Meta": [gastos_fijos, var_ace, aho_ace, inv_ace]
-                })
-                df_ace["Monto Meta"] = df_ace["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
-                st.table(df_ace)
+                with col_a:
+                    # Meta Aceptable (Fijos al 60%)
+                    ingreso_req_aceptable = gastos_fijos / 0.60
+                    
+                    st.markdown(f"### 🟡 Meta ACEPTABLE")
+                    st.write("Para que tus fijos representen el **60%**, tu ingreso mínimo requerido debe ser:")
+                    st.markdown(f"<h3 style='color:#ffc107;'>$ {ingreso_req_aceptable:,.2f}</h3>", unsafe_allow_html=True)
+                    
+                    dif_ace = ingresos - ingreso_req_aceptable
+                    if dif_ace > 0:
+                        st.success(f"✅ Tus ingresos actuales superan esta meta por **\$ {dif_ace:,.2f}**.")
+                    elif dif_ace < 0:
+                        st.warning(f"⚠️ Te faltan **\$ {abs(dif_ace):,.2f}** mensuales para alcanzar esta meta.")
+                    else:
+                        st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
+                    
+                    var_ace = ingreso_req_aceptable * 0.20
+                    aho_ace = ingreso_req_aceptable * 0.10
+                    inv_ace = ingreso_req_aceptable * 0.10
+                    
+                    df_ace = pd.DataFrame({
+                        "Distribución Ideal": ["Gastos Fijos (60%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)"],
+                        "Monto Meta": [gastos_fijos, var_ace, aho_ace, inv_ace]
+                    })
+                    df_ace["Monto Meta"] = df_ace["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
+                    st.table(df_ace)
 
-            with col_b:
+                with col_b:
+                    # Meta Excelente (Fijos al 50%)
+                    ingreso_req_excelente = gastos_fijos / 0.50
+                    
+                    st.markdown(f"### 🟢 Meta EXCELENTE")
+                    st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
+                    st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
+                    
+                    dif_exc = ingresos - ingreso_req_excelente
+                    if dif_exc > 0:
+                        st.success(f"✅ Tus ingresos actuales superan esta meta por **\$ {dif_exc:,.2f}**.")
+                    elif dif_exc < 0:
+                        st.warning(f"⚠️ Te faltan **\$ {abs(dif_exc):,.2f}** mensuales para alcanzar esta meta.")
+                    else:
+                        st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
+                    
+                    var_exc = ingreso_req_excelente * 0.20
+                    aho_exc = ingreso_req_excelente * 0.10
+                    inv_exc = ingreso_req_excelente * 0.10
+                    excedente_exc = ingreso_req_excelente * 0.10
+                    
+                    df_exc = pd.DataFrame({
+                        "Distribución Ideal": ["Gastos Fijos (50%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)", "Excedente Libre (10%)"],
+                        "Monto Meta": [gastos_fijos, var_exc, aho_exc, inv_exc, excedente_exc]
+                    })
+                    df_exc["Monto Meta"] = df_exc["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
+                    st.table(df_exc)
+
+            elif estado == "ACEPTABLE":
+                st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, este es el ingreso mínimo requerido para llevar tu estructura al nivel óptimo:".format(gastos_fijos))
+                
                 # Meta Excelente (Fijos al 50%)
                 ingreso_req_excelente = gastos_fijos / 0.50
                 
-                st.markdown(f"### 🟢 Meta EXCELENTE")
-                st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
+                st.markdown(f"### 🟢 Meta para pasar a EXCELENTE")
+                st.write("Para dar el siguiente paso y que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
                 st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
                 
                 dif_exc = ingresos - ingreso_req_excelente
@@ -128,4 +159,8 @@ if st.button("Generar Diagnóstico", type="primary"):
                     "Monto Meta": [gastos_fijos, var_exc, aho_exc, inv_exc, excedente_exc]
                 })
                 df_exc["Monto Meta"] = df_exc["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
-                st.table(df_exc)
+                
+                # Renderizar centrado visualmente
+                col1_acep, col2_acep = st.columns([1.5, 1])
+                with col1_acep:
+                    st.table(df_exc)
