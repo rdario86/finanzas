@@ -78,22 +78,57 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función de planes de acción con parámetro de criticidad
+        # ==========================================================
+        # NUEVO MÓDULO: PLAN DE RESCATE (Solo si hay déficit)
+        # ==========================================================
+        if balance < 0:
+            st.subheader("🚨 Plan de Rescate Inmediato")
+            st.markdown("Antes de proyectar metas a futuro, la **primera regla financiera** es frenar la deuda. Para lograrlo usando tus ingresos actuales, debes ejecutar un recorte estricto en el siguiente orden de prioridad:")
+            
+            deuda_actual = abs(balance)
+            var_rec = gastos_variables
+            ahorro_rec = ahorro
+            fondo_rec = fondo_reserva
+            
+            # 1. Recortar Gastos Variables
+            recorte_var = min(deuda_actual, var_rec)
+            var_rec -= recorte_var
+            deuda_actual -= recorte_var
+            
+            # 2. Recortar Ahorro (si aún hay deuda)
+            recorte_ahorro = min(deuda_actual, ahorro_rec)
+            ahorro_rec -= recorte_ahorro
+            deuda_actual -= recorte_ahorro
+            
+            # 3. Recortar Fondo (si aún hay deuda)
+            recorte_fondo = min(deuda_actual, fondo_rec)
+            fondo_rec -= recorte_fondo
+            deuda_actual -= recorte_fondo
+            
+            df_rescate = pd.DataFrame({
+                "Categoría (Orden de Recorte)": ["Gastos Fijos (Intocables)", "Gastos Variables", "Ahorro", "Fondo de Reserva"],
+                "Presupuesto de Emergencia": [gastos_fijos, var_rec, ahorro_rec, fondo_rec]
+            })
+            df_rescate["Presupuesto de Emergencia"] = df_rescate["Presupuesto de Emergencia"].apply(lambda x: f"$ {x:,.2f}")
+            st.table(df_rescate)
+            
+            if deuda_actual > 0:
+                st.error(f"⚠️ **ALERTA CRÍTICA:** Incluso recortando a **$0** tus gastos variables, ahorros y fondo de reserva, tus Gastos Fijos (**\$ {gastos_fijos:,.2f}**) superan tus Ingresos Totales. Matemáticamente sigues en déficit por **\$ {deuda_actual:,.2f}**. Tu única salida real es inyectar capital.")
+            else:
+                st.success("✅ Ajustando tus salidas a estos montos exactos de emergencia, lograrás empatar tus egresos con el total de tus ingresos actuales (**\$ {:.2f}**), frenando el endeudamiento. Luego de estabilizarte, evalúa los siguientes planes para aumentar ingresos.".format(ingresos))
+                
+            st.divider()
+
+        # ==========================================================
+        # FUNCIÓN DE PLANES DE ACCIÓN (Proyecciones ACEPTABLE / EXCELENTE)
+        # ==========================================================
         def mostrar_planes(nivel, target_pct, es_critico=False):
             st.subheader(f"💡 Plan de Acción para lograr estado: {nivel}")
-            
-            # IMPRESIÓN DE ALERTAS DE DEUDA (Solo en la primera recomendación si está crítico)
-            if es_critico and nivel == "ACEPTABLE" and balance < 0:
-                st.info("ℹ️ **Nota Estratégica:** Como presentas déficit, el 20% destinado a ahorro e inversión en estas proyecciones debe ser usado exclusivamente para pagar deudas hasta saldar las mismas.")
-                if abs(balance) > (ingresos * 0.20):
-                    st.warning("⚠️ **Alerta:** Tus deudas mensuales actuales exceden el 20% de tus ingresos. Incluso alcanzando las metas de ingresos propuestas a continuación, deberás recortar agresivamente tus gastos variables actuales para salir del riesgo.")
-                st.write("") # Espacio en blanco
 
             # REGLA PARA EXCELENTE
             if nivel == "EXCELENTE":
                 col_a, col_b = st.columns(2)
                 
-                # --- OPCIÓN A: AUMENTAR INGRESOS (MANTENIENDO VARIABLES ACTUALES) ---
                 with col_a:
                     ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
                     st.markdown(f"**Opción A: Elevar Ingresos**")
@@ -116,7 +151,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                     df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                     st.table(df_a)
 
-                # --- OPCIÓN B: ESTRUCTURA IDEAL (FIJOS 50%) ---
                 with col_b:
                     ingreso_ideal = gastos_fijos / 0.50 if gastos_fijos > 0 else 0
                     st.markdown(f"**Opción B: Estructura Ideal**")
@@ -140,7 +174,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 if es_critico:
                     col_a, col_b = st.columns(2)
                     
-                    # --- OPCIÓN A: AUMENTAR INGRESOS ---
                     with col_a:
                         ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
                         st.markdown(f"**Opción A: Elevar Ingresos**")
@@ -163,7 +196,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                         df_a_crit["Presupuesto"] = df_a_crit["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                         st.table(df_a_crit)
 
-                    # --- OPCIÓN B: ESTRUCTURA IDEAL (FIJOS 60%) ---
                     with col_b:
                         ingreso_ideal = gastos_fijos / 0.60 if gastos_fijos > 0 else 0
                         st.markdown(f"**Opción B: Estructura Ideal**")
@@ -184,7 +216,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 else:
                     col_a, col_b, col_c = st.columns(3)
                     
-                    # --- OPCIÓN A: REESTRUCTURAR GASTOS ---
                     with col_a:
                         st.markdown(f"**Opción A: Ajustar Gastos**")
                         st.write(f"Manteniendo tu ingreso de **\$ {ingresos:,.2f}** y tus Fijos bloqueados:")
@@ -207,7 +238,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                         df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                         st.table(df_a)
 
-                    # --- OPCIÓN B: AUMENTAR INGRESOS ---
                     with col_b:
                         ingreso_req = total_fijos_vars / target_pct if target_pct > 0 else 0
                         st.markdown(f"**Opción B: Elevar Ingresos**")
@@ -230,7 +260,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                         df_b["Presupuesto"] = df_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                         st.table(df_b)
 
-                    # --- OPCIÓN C: ESTRUCTURA IDEAL (FIJOS 60%) ---
                     with col_c:
                         ingreso_ideal = gastos_fijos / 0.60 if gastos_fijos > 0 else 0
                         st.markdown(f"**Opción C: Estructura Ideal**")
@@ -249,7 +278,9 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         # Disparador de recomendaciones
         if estado == "CRÍTICO":
-            st.warning("⚠️ **Estrategia sugerida:** Dado tu estado actual, la prioridad técnica no es recortar, sino inyectar capital. Aquí tienes los números objetivo:")
+            if not (balance < 0): 
+                st.warning("⚠️ **Estrategia sugerida:** Dado tu estatus, la prioridad es inyectar capital para ajustar tus porcentajes. Aquí tienes los números objetivo:")
+            
             mostrar_planes("ACEPTABLE", 0.80, es_critico=True)
             st.divider()
             mostrar_planes("EXCELENTE", 0.70, es_critico=True)
