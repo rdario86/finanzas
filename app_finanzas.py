@@ -5,6 +5,7 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
+st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
@@ -59,7 +60,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
         if balance < 0:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, lo que te coloca en estado de riesgo."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero el déficit mensual te coloca en estado de riesgo."
         elif pct_fijos_vars < 70:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
@@ -78,38 +79,28 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función para simular el presupuesto ideal
+        # Función para simular el presupuesto ideal con la distribución 60/20/10/10
         def mostrar_simulacion(ingreso_req, nivel):
             st.subheader(f"💡 Plan de Acción: {nivel}")
             
-            # Textos dinámicos dependiendo de si es reestructuración o proyección de metas
             if "Reestructuración" in nivel:
-                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** (y manteniendo tus gastos fijos y variables intactos), tu estructura ideal para evitar endeudarte sería:")
+                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** bajo la regla recomendada, tu estructura ideal sería:")
             else:
-                st.markdown(f"Para lograr este nivel (manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}** y variables en **\$ {gastos_variables:,.2f}**), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
-                st.write("Con ese nuevo nivel de ingresos, tu distribución automática ideal sería:")
+                st.markdown(f"Para lograr el estado {nivel} (cubriendo tus gastos base actuales), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
+                st.write("Con ese nuevo nivel de ingresos, tu distribución ideal sería:")
             
-            # Bloqueo del monto de gastos fijos y variables para ser precisos con los gastos actuales
-            fijos_sim = gastos_fijos
-            variables_sim = gastos_variables
-            
-            # Cálculo de ahorros y fondos (10% de los ingresos proyectados/actuales)
+            # Cálculo basado estrictamente en la regla 60/20/10/10
+            fijos_sim = ingreso_req * 0.60
+            variables_sim = ingreso_req * 0.20
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
-            # Cálculo de excedente si se llega a la meta
-            excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
-            
-            # Porcentajes reales sobre el nuevo ingreso
-            pct_fijos_real = (fijos_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
-            pct_vars_real = (variables_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
-            
             data = {
                 "Categoría": [
-                    f"Gastos Fijos ({pct_fijos_real:.1f}%)", 
-                    f"Gastos Variables ({pct_vars_real:.1f}%)", 
-                    "Ahorro (10%)", 
-                    "Fondo/Inversión (10%)"
+                    "Gastos Fijos (60.0%)", 
+                    "Gastos Variables (20.0%)", 
+                    "Ahorro (10.0%)", 
+                    "Fondo/Inversión (10.0%)"
                 ],
                 "Presupuesto Sugerido": [
                     fijos_sim,
@@ -118,12 +109,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                     fondo_sim
                 ]
             }
-            
-            # Agrega el excedente a la tabla si existe y es positivo
-            if excedente_sim > 0.01:
-                pct_excedente = (excedente_sim / ingreso_req) * 100
-                data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
-                data["Presupuesto Sugerido"].append(excedente_sim)
                 
             df_simulacion = pd.DataFrame(data)
             
