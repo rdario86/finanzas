@@ -6,16 +6,13 @@ import numpy as np
 st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 
 # --- CONTROL DE ESTADO (SESSION STATE) ---
-# Inicializamos las variables en memoria si es la primera vez que se carga la app
 if "ingresos" not in st.session_state:
     st.session_state.ingresos = 1860.0
 
 if "presupuesto_mensual" not in st.session_state:
     st.session_state.presupuesto_mensual = 1860.0 * 0.30
 
-# Función que se ejecuta SOLO cuando cambias el monto de los ingresos
 def actualizar_presupuesto():
-    # Calcula el 30% del nuevo ingreso y lo asigna automáticamente al presupuesto
     st.session_state.presupuesto_mensual = st.session_state.ingresos * 0.30
 # -----------------------------------------
 
@@ -25,23 +22,20 @@ st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la m
 # --- BARRA LATERAL ---
 st.sidebar.header("Parámetros Generales")
 
-# 1. Ingresos (conectado a la variable de estado "ingresos" y a la función de actualización)
 ingresos = st.sidebar.number_input(
     "Ingresos Totales", 
     step=100.0,
-    key="ingresos", # Se vincula a st.session_state.ingresos
-    on_change=actualizar_presupuesto # Al cambiar el número, dispara la función
+    key="ingresos", 
+    on_change=actualizar_presupuesto 
 )
 
-# Límite estricto del 30% para el validador
 limite_presupuesto = ingresos * 0.30
 
-# 2. Presupuesto (conectado a la variable de estado "presupuesto_mensual")
 presupuesto_mensual = st.sidebar.number_input(
     "Monto destinado al pago de deudas", 
-    max_value=float(limite_presupuesto), # Solo permite bajar el monto, no subirlo del 30%
+    max_value=float(limite_presupuesto), 
     step=10.0,
-    key="presupuesto_mensual", # Se vincula a st.session_state.presupuesto_mensual
+    key="presupuesto_mensual", 
     help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
 )
 
@@ -126,12 +120,14 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
             html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
             
+            # Encabezado
             html_tabla += '<thead>\n<tr style="background-color: #f0f2f6; border-bottom: 2px solid #ddd; color: #31333F;">\n'
             for col in df_resultado.columns:
                 align = 'left' if col == 'Deuda' else 'right'
                 html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
             html_tabla += '</tr>\n</thead>\n'
             
+            # Cuerpo de la tabla (filas de deudas)
             html_tabla += '<tbody>\n'
             for idx, row in df_resultado.iterrows():
                 html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
@@ -149,7 +145,23 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                         else:
                             html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
                 html_tabla += '</tr>\n'
-            html_tabla += '</tbody>\n</table>\n</div>'
+            html_tabla += '</tbody>\n'
+            
+            # Fila de TOTALES
+            html_tabla += '<tfoot>\n'
+            html_tabla += '<tr style="border-top: 2px solid #a6a8b6; background-color: #f0f2f6; font-weight: bold; color: #31333F;">\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL</td>\n'
+            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Monto Inicial"].sum():,.2f}</td>\n'
+            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Pago Mínimo"].sum():,.2f}</td>\n'
+            
+            # Sumatoria de cada mes
+            for col in columnas_meses:
+                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado[col].sum():,.2f}</td>\n'
+                
+            html_tabla += '</tr>\n'
+            html_tabla += '</tfoot>\n'
+            
+            html_tabla += '</table>\n</div>'
             
             st.markdown(html_tabla, unsafe_allow_html=True)
             
