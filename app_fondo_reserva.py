@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import math
 
 # Configuración de la página
 st.set_page_config(page_title="Fondo de Reserva", layout="wide")
@@ -52,6 +53,13 @@ col4.metric("Meta Fondo", f"${meta:,.2f}")
 # Explicación de la meta con los símbolos de dólar escapados (\$)
 st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\${ingreso_req:,.2f}**.")
 st.write(f"Tu meta total de fondo de reserva será de **\${meta:,.2f}**.")
+
+# --- NUEVO CÁLCULO DE TIEMPO PARA LA META ---
+if ahorro_mensual > 0:
+    meses_para_meta = math.ceil(meta / ahorro_mensual)
+    if meses_para_meta > 12:
+        st.warning(f"⚠️ A tu ritmo de ahorro actual, alcanzarás tu meta de **\${meta:,.2f}** en el mes **{meses_para_meta}**.")
+# --------------------------------------------
 
 st.subheader("Proyección a 12 Meses")
 
