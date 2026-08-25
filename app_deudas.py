@@ -8,11 +8,27 @@ st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 st.title("🧮 Calculadora de Deudas: Método Bola de Nieve")
 st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la más pequeña a la más grande, acelerando el proceso al reinvertir los pagos liberados.")
 
-# Barra lateral para parámetros globales
+# --- BARRA LATERAL ---
 st.sidebar.header("Parámetros Generales")
 ingresos = st.sidebar.number_input("Ingresos Totales", value=1860.0, step=100.0)
-presupuesto_mensual = st.sidebar.number_input("Monto destinado al pago de deudas", value=558.0, step=10.0)
+
+# 1. Calculamos el límite estricto del 30% de los ingresos
+limite_presupuesto = ingresos * 0.30
+
+# 2. Aseguramos que el valor inicial (558.0) no sea mayor al límite para evitar errores de Streamlit
+valor_inicial = min(558.0, limite_presupuesto)
+
+# 3. Agregamos max_value y un tooltip de ayuda (help)
+presupuesto_mensual = st.sidebar.number_input(
+    "Monto destinado al pago de deudas", 
+    value=float(valor_inicial), 
+    max_value=float(limite_presupuesto), # Aquí aplicamos el tope del 30%
+    step=10.0,
+    help="Por recomendación financiera, este monto no puede superar el 30% de tus ingresos totales."
+)
+
 porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
+# ---------------------
 
 # Resumen del presupuesto
 st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
@@ -46,29 +62,27 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             n_deudas = len(saldos)
             
             historial_saldos = []
-            historial_excedentes = [] # Nuevo historial para rastrear el uso del excedente
+            historial_excedentes = [] 
             mes = 1
             limite_meses = 240 
             
             while np.sum(saldos) > 0 and mes <= limite_meses:
                 dinero_disponible = presupuesto_mensual
                 pagos_del_mes = np.zeros(n_deudas)
-                excedentes_del_mes = np.zeros(n_deudas) # Excedente usado este mes por deuda
+                excedentes_del_mes = np.zeros(n_deudas)
                 
-                # 1. Pago mínimo de deudas activas
                 for i in range(n_deudas):
                     if saldos[i] > 0:
                         pago = min(pagos_minimos_fijos[i], saldos[i])
                         pagos_del_mes[i] = pago
                         dinero_disponible -= pago
                 
-                # 2. Asignación del excedente a la deuda más pequeña
                 for i in range(n_deudas):
                     if saldos[i] > 0 and dinero_disponible > 0:
                         saldo_restante = saldos[i] - pagos_del_mes[i]
                         pago_extra = min(saldo_restante, dinero_disponible)
                         pagos_del_mes[i] += pago_extra
-                        excedentes_del_mes[i] = pago_extra # Guardamos cuánto de la bola de nieve se usó aquí
+                        excedentes_del_mes[i] = pago_extra 
                         dinero_disponible -= pago_extra
                         
                 saldos = saldos - pagos_del_mes
@@ -78,11 +92,9 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 
             columnas_meses = [f"MES {i+1}" for i in range(len(historial_saldos))]
             
-            # DataFrame principal de saldos
             df_historial = pd.DataFrame(historial_saldos).T
             df_historial.columns = columnas_meses
             
-            # DataFrame secundario de excedentes (para los tooltips)
             df_historial_excedentes = pd.DataFrame(historial_excedentes).T
             df_historial_excedentes.columns = columnas_meses
             
@@ -92,18 +104,16 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
             st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado)*")
             
-            # Generación de tabla HTML personalizada con tooltips nativos (hover)
+            # Generación de tabla HTML personalizada
             html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
             html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
             
-            # Encabezado
             html_tabla += '<thead>\n<tr style="background-color: #f0f2f6; border-bottom: 2px solid #ddd; color: #31333F;">\n'
             for col in df_resultado.columns:
                 align = 'left' if col == 'Deuda' else 'right'
                 html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
             html_tabla += '</tr>\n</thead>\n'
             
-            # Cuerpo de la tabla
             html_tabla += '<tbody>\n'
             for idx, row in df_resultado.iterrows():
                 html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
@@ -114,18 +124,15 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                     elif col in ['Monto Inicial', 'Pago Mínimo']:
                         html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
                     else:
-                        # Revisar si en este mes se usó excedente para esta deuda
                         exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
                         if exc_val > 0:
                             tooltip_text = f"Excedente aplicado: ${exc_val:,.2f}"
-                            # Celda resaltada suavemente con tooltip nativo
                             html_tabla += f'<td style="padding: 8px 12px; text-align: right; cursor: help; background-color: rgba(24, 144, 255, 0.1);" title="{tooltip_text}">${val:,.2f}</td>\n'
                         else:
                             html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
                 html_tabla += '</tr>\n'
             html_tabla += '</tbody>\n</table>\n</div>'
             
-            # Renderizado seguro en Streamlit
             st.markdown(html_tabla, unsafe_allow_html=True)
             
             st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
