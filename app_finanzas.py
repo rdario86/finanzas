@@ -5,7 +5,6 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
