@@ -184,28 +184,3 @@ if st.button("Generar Diagnóstico", type="primary"):
                                      color_discrete_sequence=['#dc3545', '#17a2b8', '#ffc107', '#28a745', '#6c757d'])
                     fig_exc.update_layout(title_text="Distribución Excelente (50%)", title_x=0.5)
                     st.plotly_chart(fig_exc, use_container_width=True)
-
-        st.divider()
-        
-        # ==========================================================
-        # 4. MEJORA: BOTÓN PARA DESCARGAR EL DIAGNÓSTICO
-        # ==========================================================
-        st.subheader("📥 Llévate tu diagnóstico")
-        st.write("Descarga un resumen de texto con tus resultados para tener siempre a mano tu meta de ingresos.")
-        
-        # Creando el texto del reporte
-        reporte = f"""=========================================
-DIAGNÓSTICO FINANCIERO - RESULTADOS
-=========================================
-Ingresos Actuales Estimados: ${ingresos:,.2f}
-Gastos Fijos Actuales:       ${gastos_fijos:,.2f}
-Peso de tus Gastos Fijos:    {pct_fijos:.1f}%
-
-ESTATUS ACTUAL: {estado}
-Recomendación: {recomendacion}
-=========================================
-"""
-        if estado != "EXCELENTE":
-            reporte += f"\nPLAN DE ACCIÓN - META EXCELENTE (50%):\n"
-            reporte += f"Para sanear tu estructura, tu Ingreso Mínimo Requerido debe ser: ${ingreso_req_excelente:,.2f}\n"
-            reporte += f"Diferencia con tu ingreso actual: ${abs(ingresos - ingreso_req_excelente):,.2f}\n"
