@@ -4,11 +4,6 @@ import plotly.express as px
 
 st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layout="wide")
 
-# Encabezado principal
-st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu meta de ingresos ideal.")
-
 # Leyenda con las reglas exactas
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
     st.markdown("""
@@ -210,10 +205,3 @@ Recomendación: {recomendacion}
             reporte += f"\nPLAN DE ACCIÓN - META EXCELENTE (50%):\n"
             reporte += f"Para sanear tu estructura, tu Ingreso Mínimo Requerido debe ser: ${ingreso_req_excelente:,.2f}\n"
             reporte += f"Diferencia con tu ingreso actual: ${abs(ingresos - ingreso_req_excelente):,.2f}\n"
-
-        st.download_button(
-            label="📄 Descargar mi Plan Financiero (TXT)",
-            data=reporte,
-            file_name="Mi_Diagnostico_Financiero.txt",
-            mime="text/plain"
-        )
