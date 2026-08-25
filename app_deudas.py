@@ -114,7 +114,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             df_resultado = pd.concat([df_resultado, df_historial], axis=1)
             
             st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
-            st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado)*")
+            st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado individualmente)*")
             
             # Generación de tabla HTML personalizada
             html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
@@ -127,7 +127,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
             html_tabla += '</tr>\n</thead>\n'
             
-            # Cuerpo de la tabla (filas de deudas)
+            # Cuerpo de la tabla
             html_tabla += '<tbody>\n'
             for idx, row in df_resultado.iterrows():
                 html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
@@ -147,22 +147,36 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 html_tabla += '</tr>\n'
             html_tabla += '</tbody>\n'
             
-            # Fila de TOTALES
+            # --- SECCIÓN DE PIE DE PÁGINA (TFOOT) ---
             html_tabla += '<tfoot>\n'
+            
+            # 1. Fila de Total de Saldos
             html_tabla += '<tr style="border-top: 2px solid #a6a8b6; background-color: #f0f2f6; font-weight: bold; color: #31333F;">\n'
-            html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL</td>\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL SALDOS</td>\n'
             html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Monto Inicial"].sum():,.2f}</td>\n'
             html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Pago Mínimo"].sum():,.2f}</td>\n'
             
-            # Sumatoria de cada mes
             for col in columnas_meses:
                 html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado[col].sum():,.2f}</td>\n'
-                
             html_tabla += '</tr>\n'
+            
+            # 2. Fila de Excedente Disponible Aplicado
+            html_tabla += '<tr style="background-color: #e8f4fd; font-weight: bold; color: #0056b3;">\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: left;">EXCEDENTE APLICADO</td>\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
+            html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
+            
+            for col in columnas_meses:
+                # Sumamos todo el excedente utilizado en ese mes específico
+                total_excedente_mes = df_historial_excedentes[col].sum()
+                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${total_excedente_mes:,.2f}</td>\n'
+            html_tabla += '</tr>\n'
+            
             html_tabla += '</tfoot>\n'
+            # ----------------------------------------
             
             html_tabla += '</table>\n</div>'
             
             st.markdown(html_tabla, unsafe_allow_html=True)
             
-            st.info(f"Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+            st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
