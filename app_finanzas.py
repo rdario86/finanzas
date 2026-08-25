@@ -5,8 +5,6 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado principal
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu meta de ingresos ideal.")
 
 # Leyenda con las reglas exactas
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
