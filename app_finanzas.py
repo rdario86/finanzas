@@ -37,7 +37,7 @@ if st.button("Generar Diagnóstico", type="primary"):
     flujo_total = gastos_fijos + gastos_variables + ahorro + fondo_inversion
     
     if flujo_total == 0:
-        st.error("Debes ingresar montos mayores a $0 para realizar el cálculo.")
+        st.error("Debes ingresar montos mayores a \$0 para realizar el cálculo.")
     elif gastos_fijos == 0:
         st.error("Los Gastos Fijos son la base del diagnóstico. Por favor, ingresa un monto válido.")
     else:
@@ -72,10 +72,10 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.divider()
 
         # ==========================================================
-        # PLAN DE ACCIÓN: METAS DE FACTURACIÓN
+        # PLAN DE ACCIÓN: METAS DE INGRESO
         # ==========================================================
         st.header("3. Plan de Acción: Metas de Ingreso")
-        st.markdown("Manteniendo tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los niveles de facturación que debes alcanzar para lograr una estructura óptima:".format(gastos_fijos))
+        st.markdown("Manteniendo tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para lograr una estructura óptima:".format(gastos_fijos))
         
         # Columnas para mostrar los dos escenarios ideales
         col_a, col_b = st.columns(2)
@@ -85,7 +85,7 @@ if st.button("Generar Diagnóstico", type="primary"):
             ingreso_req_aceptable = gastos_fijos / 0.60
             
             st.markdown(f"### 🟡 Meta ACEPTABLE")
-            st.write("Para que tus fijos representen el **60%**, tu facturación debe ser:")
+            st.write("Para que tus fijos representen el **60%**, tu ingreso mínimo requerido debe ser:")
             st.markdown(f"<h3 style='color:#ffc107;'>$ {ingreso_req_aceptable:,.2f}</h3>", unsafe_allow_html=True)
             
             var_ace = ingreso_req_aceptable * 0.20
@@ -104,7 +104,7 @@ if st.button("Generar Diagnóstico", type="primary"):
             ingreso_req_excelente = gastos_fijos / 0.50
             
             st.markdown(f"### 🟢 Meta EXCELENTE")
-            st.write("Para que tus fijos representen el **50%**, tu facturación debe ser:")
+            st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
             st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
             
             # En Excelente (50%), sobra un 10% adicional si usamos 20/10/10 para el resto
