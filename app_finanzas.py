@@ -6,7 +6,7 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 # Encabezado principal
 st.title("Diagnóstico Financiero 📊")
 st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu distribución ideal.")
+st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu meta de ingresos ideal.")
 
 # Leyenda con las reglas
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
@@ -46,7 +46,7 @@ if st.button("Generar Diagnóstico", type="primary"):
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo."
-            recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de facturación sugeridas más abajo."
+            recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
         elif pct_fijos >= 50:
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
@@ -65,35 +65,9 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.divider()
 
         # ==========================================================
-        # CÁLCULO 1: DISTRIBUCIÓN IDEAL DEL INGRESO ACTUAL
+        # CÁLCULO: METAS DE INGRESO (PLAN DE ACCIÓN)
         # ==========================================================
-        st.header("3. Distribución Ideal de tu Ingreso Actual")
-        st.write(f"Con tu nivel de ingresos actual de **\$ {ingresos:,.2f}**, así debería estar distribuido tu dinero aplicando la regla recomendada:")
-        
-        ideal_fijos = ingresos * 0.60
-        ideal_vars = ingresos * 0.20
-        ideal_ahorro = ingresos * 0.10
-        ideal_inv = ingresos * 0.10
-        
-        df_actual_ideal = pd.DataFrame({
-            "Categoría": ["Gastos Fijos Máximos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Inversión (10%)"],
-            "Monto Recomendado": [ideal_fijos, ideal_vars, ideal_ahorro, ideal_inv]
-        })
-        df_actual_ideal["Monto Recomendado"] = df_actual_ideal["Monto Recomendado"].apply(lambda x: f"$ {x:,.2f}")
-        
-        st.table(df_actual_ideal)
-        
-        # Alerta rápida si los fijos ingresados superan lo que deberían ser
-        if gastos_fijos > ideal_fijos:
-            exceso = gastos_fijos - ideal_fijos
-            st.warning(f"⚠️ Tus gastos fijos reales (\$ {gastos_fijos:,.2f}) exceden por **\$ {exceso:,.2f}** el límite sano para tu ingreso actual. Revisa las metas a continuación.")
-
-        st.divider()
-
-        # ==========================================================
-        # CÁLCULO 2: METAS DE INGRESO (PLAN DE ACCIÓN)
-        # ==========================================================
-        st.header("4. Plan de Acción: Metas de Ingreso")
+        st.header("3. Plan de Acción: Metas de Ingreso")
         st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para sanear tu estructura:".format(gastos_fijos))
         
         col_a, col_b = st.columns(2)
