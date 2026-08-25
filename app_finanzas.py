@@ -11,10 +11,10 @@ st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en
 # Nueva Leyenda del Diagnóstico
 with st.expander("ℹ️ Leyenda: ¿Cómo se evalúa el estatus financiero?"):
     st.markdown("""
-    El estado de tus finanzas se determina por el porcentaje que representan tus **Gastos Fijos** sobre tus **Ingresos Totales**:
-    - 🟢 **EXCELENTE:** Gastos fijos menores al **50%**.
-    - 🟡 **ACEPTABLE:** Gastos fijos entre el **50%** y **60%**.
-    - 🔴 **CRÍTICO:** Gastos fijos mayores al **60%** (O si presentas déficit y asumes deudas).
+    El estado de tus finanzas se determina por el porcentaje que representan tus **Gastos Fijos y Variables** sobre tus **Ingresos Totales**:
+    - 🟢 **EXCELENTE:** Gastos fijos y variables son menores al **70%**.
+    - 🟡 **ACEPTABLE:** Gastos fijos y variables entre el **70%** y **80%**.
+    - 🔴 **CRÍTICO:** Gastos fijos y variables mayores al **80%** (O si presentas déficit y asumes deudas).
     """)
 
 st.divider()
@@ -52,26 +52,27 @@ if st.button("Hacer Diagnóstico", type="primary"):
         else:
             st.info(f"**PUNTO DE EQUILIBRIO:** Tus ingresos cubren exactamente tus salidas (\$ 0.00).")
 
-        # Estatus de las finanzas
-        pct_fijos = (gastos_fijos / ingresos) * 100
+        # Estatus de las finanzas (Evaluando Fijos + Variables juntos)
+        total_fijos_vars = gastos_fijos + gastos_variables
+        pct_fijos_vars = (total_fijos_vars / ingresos) * 100
         
-        # NUEVA LÓGICA: El déficit fuerza el estado a CRÍTICO
+        # LÓGICA DE ESTATUS: El déficit fuerza el estado a CRÍTICO
         if balance < 0:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje_pct = f"Tus gastos fijos representan el **{pct_fijos:.1f}%** de tus ingresos, pero el déficit mensual te coloca en estado de riesgo."
-        elif pct_fijos < 50:
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero el déficit mensual te coloca en estado de riesgo."
+        elif pct_fijos_vars < 70:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
-            mensaje_pct = f"Tus gastos fijos representan el **{pct_fijos:.1f}%** de tus ingresos."
-        elif pct_fijos <= 60:
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
+        elif pct_fijos_vars <= 80:
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
-            mensaje_pct = f"Tus gastos fijos representan el **{pct_fijos:.1f}%** de tus ingresos."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
         else:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje_pct = f"Tus gastos fijos representan el **{pct_fijos:.1f}%** de tus ingresos."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
 
         st.markdown(mensaje_pct)
         st.markdown(f"Estado de tus finanzas: <strong style='color:{color}; font-size: 1.2em;'>{estado}</strong>", unsafe_allow_html=True)
@@ -84,27 +85,30 @@ if st.button("Hacer Diagnóstico", type="primary"):
             
             # Textos dinámicos dependiendo de si es reestructuración o proyección de metas
             if "Reestructuración" in nivel:
-                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** (y manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}**), tu estructura ideal para evitar endeudarte sería:")
+                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** (y manteniendo tus gastos fijos y variables intactos), tu estructura ideal para evitar endeudarte sería:")
             else:
-                st.markdown(f"Para lograr este nivel (manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
+                st.markdown(f"Para lograr este nivel (manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}** y variables en **\$ {gastos_variables:,.2f}**), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
                 st.write("Con ese nuevo nivel de ingresos, tu distribución automática ideal sería:")
             
-            # Bloqueo del monto de gastos fijos
+            # Bloqueo del monto de gastos fijos y variables para ser precisos con los gastos actuales
             fijos_sim = gastos_fijos
+            variables_sim = gastos_variables
             
-            # Cálculo del resto basado en la regla 20/10/10
-            variables_sim = ingreso_req * 0.20
+            # Cálculo de ahorros y fondos (10% de los ingresos proyectados/actuales)
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
-            # Cálculo de excedente si se llega a excelente
+            # Cálculo de excedente si se llega a la meta
             excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
-            pct_fijos_real = (fijos_sim / ingreso_req) * 100
+            
+            # Porcentajes reales sobre el nuevo ingreso
+            pct_fijos_real = (fijos_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
+            pct_vars_real = (variables_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
             
             data = {
                 "Categoría": [
                     f"Gastos Fijos ({pct_fijos_real:.1f}%)", 
-                    "Gastos Variables (20%)", 
+                    f"Gastos Variables ({pct_vars_real:.1f}%)", 
                     "Ahorro (10%)", 
                     "Fondo/Inversión (10%)"
                 ],
@@ -131,24 +135,24 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         # Lógica de proyecciones según el estado actual
         if estado == "CRÍTICO":
-            if balance < 0 and pct_fijos < 50:
-                st.warning("⚠️ **Análisis Especial:** Tus gastos fijos son menores al 50% (¡excelente!), pero asumes deudas porque te excedes en gastos variables o ahorros. No necesitas ganar más, necesitas reestructurar tus salidas.")
+            if balance < 0 and pct_fijos_vars < 70:
+                st.warning("⚠️ **Análisis Especial:** Tus gastos base (fijos + variables) son menores al 70% (¡excelente!), pero asumes deudas porque te excedes en ahorros o fondos. No necesitas ganar más, necesitas reestructurar tus salidas.")
                 mostrar_simulacion(ingresos, "Reestructuración (Ingreso Actual)")
                 
-            elif balance < 0 and pct_fijos <= 60:
-                st.warning("⚠️ **Análisis Especial:** Tus gastos fijos son aceptables (menores al 60%), pero asumes deudas por otras salidas. Puedes reestructurar tus gastos actuales, o apuntar al estado EXCELENTE incrementando tus ingresos.")
+            elif balance < 0 and pct_fijos_vars <= 80:
+                st.warning("⚠️ **Análisis Especial:** Tus gastos base (fijos + variables) son aceptables (menores al 80%), pero asumes deudas por asignar de más al ahorro/fondos. Puedes reestructurar tus gastos actuales, o apuntar al estado EXCELENTE incrementando tus ingresos.")
                 mostrar_simulacion(ingresos, "Reestructuración (Ingreso Actual)")
                 
-                ingreso_excelente = gastos_fijos / 0.50 
+                ingreso_excelente = total_fijos_vars / 0.70 
                 mostrar_simulacion(ingreso_excelente, "EXCELENTE")
                 
             else:
-                ingreso_aceptable = gastos_fijos / 0.60
+                ingreso_aceptable = total_fijos_vars / 0.80
                 mostrar_simulacion(ingreso_aceptable, "ACEPTABLE")
                 
-                ingreso_excelente = gastos_fijos / 0.50 
+                ingreso_excelente = total_fijos_vars / 0.70 
                 mostrar_simulacion(ingreso_excelente, "EXCELENTE")
 
         elif estado == "ACEPTABLE":
-            ingreso_excelente = gastos_fijos / 0.50
+            ingreso_excelente = total_fijos_vars / 0.70
             mostrar_simulacion(ingreso_excelente, "EXCELENTE")
