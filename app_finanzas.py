@@ -79,52 +79,84 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Nueva función: Muestra las DOS opciones claras para llegar al nivel deseado
+        # Función de planes de acción con la nueva lógica condicional
         def mostrar_planes(nivel, target_pct):
-            st.subheader(f"💡 Planes de Acción para lograr estado: {nivel}")
+            st.subheader(f"💡 Plan de Acción para lograr estado: {nivel}")
             
-            col_a, col_b = st.columns(2)
-            
-            # --- OPCIÓN A: MANTENER INGRESOS, AJUSTAR GASTOS ---
-            with col_a:
-                st.markdown(f"**Opción A: Reestructurar Gastos**")
-                st.write(f"Manteniendo tus ingresos actuales de **\$ {ingresos:,.2f}**, tu distribución debe ser exactamente:")
-                
-                df_opcion_a = pd.DataFrame({
-                    "Categoría": ["Gastos Fijos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Fondo/Inversión (10%)"],
-                    "Presupuesto": [ingresos * 0.60, ingresos * 0.20, ingresos * 0.10, ingresos * 0.10]
-                })
-                df_opcion_a["Presupuesto"] = df_opcion_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                st.table(df_opcion_a)
-
-            # --- OPCIÓN B: MANTENER GASTOS, AUMENTAR INGRESOS ---
-            with col_b:
+            # REGLA PARA EXCELENTE: Solo mostrar Aumentar Ingresos
+            if nivel == "EXCELENTE":
                 ingreso_requerido = total_fijos_vars / target_pct if target_pct > 0 else 0
-                st.markdown(f"**Opción B: Aumentar Ingresos**")
-                st.write(f"Manteniendo tus gastos iniciales, debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
+                st.markdown(f"**Recomendación Única: Aumentar Ingresos**")
+                st.write(f"Para llegar a EXCELENTE manteniendo tus gastos iniciales, debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
                 
-                # Ahorro y fondo se calculan sobre el NUEVO ingreso
                 ahorro_sim = ingreso_requerido * 0.10
                 fondo_sim = ingreso_requerido * 0.10
                 
-                # Porcentajes de los gastos fijos iniciales sobre la nueva meta
                 pct_fijos_real = (gastos_fijos / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
                 pct_vars_real = (gastos_variables / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
                 
-                # Excedente libre (para el caso de EXCELENTE que target es 70%)
                 excedente_sim = ingreso_requerido - (gastos_fijos + gastos_variables + ahorro_sim + fondo_sim)
                 
-                cats_b = [f"Gastos Fijos ({pct_fijos_real:.1f}%)", f"Gastos Vars ({pct_vars_real:.1f}%)", "Ahorro (10%)", "Fondo/Inv. (10%)"]
-                montos_b = [gastos_fijos, gastos_variables, ahorro_sim, fondo_sim]
+                cats = [f"Gastos Fijos ({pct_fijos_real:.1f}%)", f"Gastos Vars ({pct_vars_real:.1f}%)", "Ahorro (10%)", "Fondo/Inv. (10%)"]
+                montos = [gastos_fijos, gastos_variables, ahorro_sim, fondo_sim]
                 
                 if excedente_sim > 0.01:
                     pct_excedente = (excedente_sim / ingreso_requerido) * 100
-                    cats_b.append(f"Excedente Libre ({pct_excedente:.1f}%)")
-                    montos_b.append(excedente_sim)
+                    cats.append(f"Excedente Libre ({pct_excedente:.1f}%)")
+                    montos.append(excedente_sim)
                 
-                df_opcion_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
-                df_opcion_b["Presupuesto"] = df_opcion_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
-                st.table(df_opcion_b)
+                df_excelente = pd.DataFrame({"Categoría": cats, "Presupuesto": montos})
+                df_excelente["Presupuesto"] = df_excelente["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
+                st.table(df_excelente)
+                
+            # REGLA PARA ACEPTABLE: Mostrar ambas opciones
+            else:
+                col_a, col_b = st.columns(2)
+                
+                # --- OPCIÓN A: REESTRUCTURAR GASTOS ---
+                with col_a:
+                    st.markdown(f"**Opción A: Reestructurar Gastos**")
+                    st.write(f"Manteniendo tus ingresos actuales de **\$ {ingresos:,.2f}**, tu distribución debe ser:")
+                    
+                    df_opcion_a = pd.DataFrame({
+                        "Categoría": ["Gastos Fijos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Fondo/Inversión (10%)"],
+                        "Presupuesto": [ingresos * 0.60, ingresos * 0.20, ingresos * 0.10, ingresos * 0.10]
+                    })
+                    df_opcion_a["Presupuesto"] = df_opcion_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
+                    st.table(df_opcion_a)
+                    
+                    # Alertas de deuda integradas en la Opción A
+                    if balance < 0:
+                        st.info("ℹ️ **Nota:** Como presentas déficit y deudas, el 20% destinado a ahorro e inversión debe ser usado exclusivamente para pagar deudas hasta saldar las mismas.")
+                        
+                        if abs(balance) > (ingresos * 0.20):
+                            st.warning("⚠️ **Alerta:** Tus deudas mensuales exceden el 20% de tus ingresos. Debes considerar recortar aún más tus gastos variables para poder solventarlas.")
+
+                # --- OPCIÓN B: AUMENTAR INGRESOS ---
+                with col_b:
+                    ingreso_requerido = total_fijos_vars / target_pct if target_pct > 0 else 0
+                    st.markdown(f"**Opción B: Aumentar Ingresos**")
+                    st.write(f"Manteniendo tus gastos iniciales, debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
+                    
+                    ahorro_sim = ingreso_requerido * 0.10
+                    fondo_sim = ingreso_requerido * 0.10
+                    
+                    pct_fijos_real = (gastos_fijos / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
+                    pct_vars_real = (gastos_variables / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
+                    
+                    excedente_sim = ingreso_requerido - (gastos_fijos + gastos_variables + ahorro_sim + fondo_sim)
+                    
+                    cats_b = [f"Gastos Fijos ({pct_fijos_real:.1f}%)", f"Gastos Vars ({pct_vars_real:.1f}%)", "Ahorro (10%)", "Fondo/Inv. (10%)"]
+                    montos_b = [gastos_fijos, gastos_variables, ahorro_sim, fondo_sim]
+                    
+                    if excedente_sim > 0.01:
+                        pct_excedente = (excedente_sim / ingreso_requerido) * 100
+                        cats_b.append(f"Excedente Libre ({pct_excedente:.1f}%)")
+                        montos_b.append(excedente_sim)
+                    
+                    df_opcion_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
+                    df_opcion_b["Presupuesto"] = df_opcion_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
+                    st.table(df_opcion_b)
 
         # Disparador de recomendaciones
         if estado == "CRÍTICO":
