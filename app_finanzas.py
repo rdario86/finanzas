@@ -6,63 +6,56 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 # Encabezado principal
 st.title("Diagnóstico Financiero 📊")
 st.markdown("#### Panel de Control - Rubén Núñez")
-st.markdown("Ingresa tus salidas de dinero mensuales para evaluar la estructura de tus finanzas y descubrir tu meta de ingresos.")
+st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu distribución ideal.")
 
-# Leyenda con las nuevas reglas
+# Leyenda con las reglas
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
     st.markdown("""
-    La salud de tu estructura financiera se mide evaluando qué porcentaje de tu dinero es consumido por tus **Gastos Fijos** (aquellos que debes pagar sí o sí cada mes):
+    La salud de tu estructura se mide por el porcentaje que consumen tus **Gastos Fijos** sobre tus **Ingresos Totales**:
     
-    - 🟢 **EXCELENTE:** Tus gastos fijos consumen **menos del 50%** de tu flujo.
-    - 🟡 **ACEPTABLE:** Tus gastos fijos consumen **entre el 50% y el 60%**.
-    - 🔴 **CRÍTICO:** Tus gastos fijos consumen **más del 60%** (Vives al límite y sin margen de maniobra).
+    - 🟢 **EXCELENTE:** Menos del 50%.
+    - 🟡 **ACEPTABLE:** Entre el 50% y el 60%.
+    - 🔴 **CRÍTICO:** Más del 60%.
     """)
 
 st.divider()
 
-st.header("1. Ingresa tus salidas mensuales")
+st.header("1. Ingresa tus datos mensuales")
 
-# Campos de entrada directa (sin barra deslizadora)
+# Solo dos campos de entrada
 col1, col2 = st.columns(2)
 with col1:
-    gastos_fijos = st.number_input("Gastos Fijos Totales (\$)", min_value=0.0, value=650.0, step=50.0)
-    gastos_variables = st.number_input("Gastos Variables Totales (\$)", min_value=0.0, value=200.0, step=50.0)
+    ingresos = st.number_input("Ingresos Totales (\$)", min_value=0.0, value=1000.0, step=100.0)
 with col2:
-    ahorro = st.number_input("Destinado a Ahorro (\$)", min_value=0.0, value=50.0, step=10.0)
-    fondo_inversion = st.number_input("Destinado a Fondo/Inversión (\$)", min_value=0.0, value=50.0, step=10.0)
+    gastos_fijos = st.number_input("Gastos Fijos Totales (\$)", min_value=0.0, value=650.0, step=50.0)
 
 if st.button("Generar Diagnóstico", type="primary"):
     
-    # El flujo de caja estimado es la suma de todo el dinero que el usuario distribuye
-    flujo_total = gastos_fijos + gastos_variables + ahorro + fondo_inversion
-    
-    if flujo_total == 0:
-        st.error("Debes ingresar montos mayores a \$0 para realizar el cálculo.")
+    if ingresos == 0:
+        st.error("Los ingresos deben ser mayores a $0 para realizar el cálculo.")
     elif gastos_fijos == 0:
-        st.error("Los Gastos Fijos son la base del diagnóstico. Por favor, ingresa un monto válido.")
+        st.error("Por favor, ingresa un monto válido para tus Gastos Fijos.")
     else:
         st.divider()
         st.header("2. Tu Diagnóstico Actual")
         
-        st.info(f"💡 Sumando todas tus categorías, estimamos que tu flujo de dinero actual es de **\$ {flujo_total:,.2f}** al mes.")
-        
-        # El diagnóstico se basa ÚNICAMENTE en el peso de los fijos
-        pct_fijos = (gastos_fijos / flujo_total) * 100
+        # El diagnóstico evalúa el peso de los fijos sobre los ingresos reales
+        pct_fijos = (gastos_fijos / ingresos) * 100
         
         if pct_fijos > 60:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tu dinero. Estás por encima del límite de riesgo."
-            recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu flujo actual. Debes enfocarte urgentemente en reducir contratos fijos o trazar un plan para aumentar tus ingresos."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo."
+            recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de facturación sugeridas más abajo."
         elif pct_fijos >= 50:
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tu dinero. Te mantienes en la zona de equilibrio."
-            recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y busca optimizar tus excedentes hacia la inversión."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio."
+            recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y optimiza el resto para ahorrar."
         else:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tu dinero. Tienes una flexibilidad financiera sobresaliente."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Tienes una flexibilidad financiera sobresaliente."
             recomendacion = "🌟 **Recomendación:** Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio."
 
         st.markdown(f"Estatus de tu estructura: <strong style='color:{color}; font-size: 1.5em;'>{estado}</strong>", unsafe_allow_html=True)
@@ -72,12 +65,37 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.divider()
 
         # ==========================================================
-        # PLAN DE ACCIÓN: METAS DE INGRESO
+        # CÁLCULO 1: DISTRIBUCIÓN IDEAL DEL INGRESO ACTUAL
         # ==========================================================
-        st.header("3. Plan de Acción: Metas de Ingreso")
-        st.markdown("Manteniendo tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para lograr una estructura óptima:".format(gastos_fijos))
+        st.header("3. Distribución Ideal de tu Ingreso Actual")
+        st.write(f"Con tu nivel de ingresos actual de **\$ {ingresos:,.2f}**, así debería estar distribuido tu dinero aplicando la regla recomendada:")
         
-        # Columnas para mostrar los dos escenarios ideales
+        ideal_fijos = ingresos * 0.60
+        ideal_vars = ingresos * 0.20
+        ideal_ahorro = ingresos * 0.10
+        ideal_inv = ingresos * 0.10
+        
+        df_actual_ideal = pd.DataFrame({
+            "Categoría": ["Gastos Fijos Máximos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Inversión (10%)"],
+            "Monto Recomendado": [ideal_fijos, ideal_vars, ideal_ahorro, ideal_inv]
+        })
+        df_actual_ideal["Monto Recomendado"] = df_actual_ideal["Monto Recomendado"].apply(lambda x: f"$ {x:,.2f}")
+        
+        st.table(df_actual_ideal)
+        
+        # Alerta rápida si los fijos ingresados superan lo que deberían ser
+        if gastos_fijos > ideal_fijos:
+            exceso = gastos_fijos - ideal_fijos
+            st.warning(f"⚠️ Tus gastos fijos reales (\$ {gastos_fijos:,.2f}) exceden por **\$ {exceso:,.2f}** el límite sano para tu ingreso actual. Revisa las metas a continuación.")
+
+        st.divider()
+
+        # ==========================================================
+        # CÁLCULO 2: METAS DE INGRESO (PLAN DE ACCIÓN)
+        # ==========================================================
+        st.header("4. Plan de Acción: Metas de Ingreso")
+        st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para sanear tu estructura:".format(gastos_fijos))
+        
         col_a, col_b = st.columns(2)
         
         with col_a:
@@ -107,7 +125,6 @@ if st.button("Generar Diagnóstico", type="primary"):
             st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
             st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
             
-            # En Excelente (50%), sobra un 10% adicional si usamos 20/10/10 para el resto
             var_exc = ingreso_req_excelente * 0.20
             aho_exc = ingreso_req_excelente * 0.10
             inv_exc = ingreso_req_excelente * 0.10
