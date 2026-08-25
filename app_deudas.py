@@ -165,4 +165,4 @@ if st.button("Calcular Plan de Pagos", type="primary"):
             
             st.markdown(html_tabla, unsafe_allow_html=True)
             
-            st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+            st.info(f"Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
