@@ -8,14 +8,14 @@ st.title("Diagnóstico Financiero 📊")
 st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu meta de ingresos ideal.")
 
-# Leyenda con las reglas
+# Leyenda con las reglas exactas
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
     st.markdown("""
     La salud de tu estructura se mide por el porcentaje que consumen tus **Gastos Fijos** sobre tus **Ingresos Totales**:
     
-    - 🟢 **EXCELENTE:** Menos del 50%.
-    - 🟡 **ACEPTABLE:** Entre el 50% y el 60%.
-    - 🔴 **CRÍTICO:** Más del 60%.
+    - 🟢 **EXCELENTE:** < 50%
+    - 🟡 **ACEPTABLE:** >= 50% y <= 60%
+    - 🔴 **CRÍTICO:** > 60%
     """)
 
 st.divider()
@@ -42,20 +42,23 @@ if st.button("Generar Diagnóstico", type="primary"):
         # El diagnóstico evalúa el peso de los fijos sobre los ingresos reales
         pct_fijos = (gastos_fijos / ingresos) * 100
         
+        # Aplicación estricta de las reglas matemáticas solicitadas
         if pct_fijos > 60:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo (> 60%)."
             recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
-        elif pct_fijos >= 50:
+            
+        elif pct_fijos >= 50 and pct_fijos <= 60:
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio (>= 50% y <= 60%)."
             recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel."
-        else:
+            
+        elif pct_fijos < 50:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
-            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Tienes una flexibilidad financiera sobresaliente."
+            mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Tienes una flexibilidad financiera sobresaliente (< 50%)."
             recomendacion = "🌟 **Recomendación:** Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio. ¡Sigue así, no necesitas un plan de rescate!"
 
         st.markdown(f"Estatus de tu estructura: <strong style='color:{color}; font-size: 1.5em;'>{estado}</strong>", unsafe_allow_html=True)
