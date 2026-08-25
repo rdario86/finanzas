@@ -79,7 +79,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función para simular el presupuesto ideal
+        # Función para simular el presupuesto ideal manteniendo fijos los montos ingresados
         def mostrar_simulacion(ingreso_req, nivel):
             st.subheader(f"💡 Plan de Acción: {nivel}")
             
@@ -87,21 +87,20 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** y manteniendo tus gastos fijos y variables actuales, tu estructura ideal sería:")
             else:
                 st.markdown(f"Para lograr el estado {nivel} (cubriendo tus gastos fijos y variables actuales), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
-                st.write("Con ese nuevo nivel de ingresos, tu distribución ideal sería:")
             
-            # 1. Mantener gastos fijos y variables actuales
+            # 1. Los montos de la simulación serán EXACTAMENTE los que ingresaste arriba
             fijos_sim = gastos_fijos
             variables_sim = gastos_variables
             
-            # 2. Dejar el 10% para ahorro y 10% para fondo sobre el nuevo ingreso calculado
+            # 2. Se calcula el 10% para ahorro y 10% para fondo sobre el nuevo ingreso
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
-            # 3. Calcular porcentajes reales para mostrarlos en la tabla
+            # 3. Se calculan los porcentajes reales para mostrarlos en la tabla de forma exacta
             pct_fijos = (fijos_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
             pct_vars = (variables_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
             
-            # 4. Calcular si existe algún excedente (Ocurrirá en estado EXCELENTE)
+            # 4. Cálculo de excedente si la meta es Excelente
             excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
             
             data = {
@@ -119,7 +118,6 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 ]
             }
             
-            # Mostrar la categoría de excedente si sobra dinero en la proyección
             if excedente_sim > 0.01:
                 pct_excedente = (excedente_sim / ingreso_req) * 100
                 data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
