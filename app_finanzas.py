@@ -29,20 +29,24 @@ with col1:
 with col2:
     ahorro = st.number_input("Ahorro (\$)", min_value=0.0, value=50.0, step=10.0)
     fondo_reserva = st.number_input("Fondo de Reserva (\$)", min_value=0.0, value=50.0, step=10.0)
+    deudas = st.number_input("Pago de Deudas (\$)", min_value=0.0, value=0.0, step=10.0)
 
 if st.button("Hacer Diagnóstico", type="primary"):
     
-    # Sumatoria de todas las salidas para validación
-    total_egresos = gastos_fijos + gastos_variables + ahorro + fondo_reserva
+    # Sumatoria exclusiva para la restricción (SIN incluir deudas)
+    salidas_sin_deudas = gastos_fijos + gastos_variables + ahorro + fondo_reserva
     
     if ingresos == 0:
         st.error("Los ingresos deben ser mayores a \$0 para calcular los indicadores.")
-    elif total_egresos > ingresos:
-        # Bloqueo si las salidas superan los ingresos
-        st.error(f"⚠️ **¡Error de cálculo!** La suma de tus salidas (**\$ {total_egresos:,.2f}**) excede tus ingresos totales (**\$ {ingresos:,.2f}**). Por favor, ajusta los montos ingresados antes de continuar.")
+    elif salidas_sin_deudas > ingresos:
+        # Bloqueo si las salidas base superan los ingresos
+        st.error(f"⚠️ **¡Error de presupuesto!** La suma de tus salidas (sin incluir deudas) es de **\$ {salidas_sin_deudas:,.2f}** y excede tus ingresos totales (**\$ {ingresos:,.2f}**). Por favor, ajusta los montos ingresados antes de continuar.")
     else:
         st.divider()
         st.header("2. Resultados del Diagnóstico")
+        
+        # Sumatoria de TODAS las salidas para el cálculo real de balance
+        total_egresos = salidas_sin_deudas + deudas
         
         # Cálculo de balance (Excedente o Déficit)
         balance = ingresos - total_egresos
@@ -50,7 +54,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
         if balance > 0:
             st.success(f"**EXCEDENTE:** Tienes un saldo a favor de **\$ {balance:,.2f}**")
         elif balance < 0:
-            st.error(f"**DÉFICIT:** Te faltan **\$ {abs(balance):,.2f}** para cubrir tus compromisos.")
+            st.error(f"**DÉFICIT:** Te faltan **\$ {abs(balance):,.2f}** para cubrir todos tus compromisos (incluyendo deudas).")
         else:
             st.info(f"**PUNTO DE EQUILIBRIO:** Tus ingresos cubren exactamente tus salidas (\$ 0.00).")
 
@@ -79,16 +83,17 @@ if st.button("Hacer Diagnóstico", type="primary"):
             st.markdown(f"Para lograr este nivel (manteniendo tus gastos fijos en **\$ {gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
             st.write("Con ese nuevo nivel de ingresos, tu distribución automática ideal sería:")
             
-            # Bloqueo del monto de gastos fijos
+            # Bloqueo del monto de gastos fijos y deudas
             fijos_sim = gastos_fijos
+            deudas_sim = deudas
             
             # Cálculo del resto basado en la regla 20/10/10 sobre el NUEVO ingreso
             variables_sim = ingreso_req * 0.20
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
-            # Cálculo de excedente si se llega a excelente (ya que fijos serán <= 50%)
-            excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
+            # Cálculo de excedente si se llega a excelente
+            excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim + deudas_sim)
             pct_fijos_real = (fijos_sim / ingreso_req) * 100
             
             data = {
@@ -106,7 +111,13 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 ]
             }
             
-            # Agrega el excedente a la tabla si existe
+            # Se añaden las deudas a la tabla si hay un monto ingresado
+            if deudas_sim > 0:
+                pct_deudas = (deudas_sim / ingreso_req) * 100
+                data["Categoría"].append(f"Pago de Deudas ({pct_deudas:.1f}%)")
+                data["Presupuesto Sugerido"].append(deudas_sim)
+            
+            # Agrega el excedente a la tabla si existe y es positivo
             if excedente_sim > 0.01:
                 pct_excedente = (excedente_sim / ingreso_req) * 100
                 data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
