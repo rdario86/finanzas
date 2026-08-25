@@ -5,7 +5,7 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control")
+st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
@@ -31,14 +31,20 @@ with col2:
     fondo_reserva = st.number_input("Fondo de Reserva (\$)", min_value=0.0, value=50.0, step=10.0)
 
 if st.button("Hacer Diagnóstico", type="primary"):
+    
+    # Sumatoria de todas las salidas para validación
+    total_egresos = gastos_fijos + gastos_variables + ahorro + fondo_reserva
+    
     if ingresos == 0:
         st.error("Los ingresos deben ser mayores a \$0 para calcular los indicadores.")
+    elif total_egresos > ingresos:
+        # Bloqueo si las salidas superan los ingresos
+        st.error(f"⚠️ **¡Error de cálculo!** La suma de tus salidas (**\$ {total_egresos:,.2f}**) excede tus ingresos totales (**\$ {ingresos:,.2f}**). Por favor, ajusta los montos ingresados antes de continuar.")
     else:
         st.divider()
         st.header("2. Resultados del Diagnóstico")
         
         # Cálculo de balance (Excedente o Déficit)
-        total_egresos = gastos_fijos + gastos_variables + ahorro + fondo_reserva
         balance = ingresos - total_egresos
         
         if balance > 0:
