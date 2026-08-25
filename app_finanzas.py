@@ -5,7 +5,6 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
@@ -60,7 +59,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
         if balance < 0:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero el déficit mensual te coloca en estado de riesgo."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, lo que te coloca en estado de riesgo."
         elif pct_fijos_vars < 70:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
