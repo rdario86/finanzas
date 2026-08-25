@@ -5,10 +5,6 @@ import pandas as pd
 st.set_page_config(page_title="Fondo de Reserva", layout="wide")
 
 # Encabezado del reporte
-st.markdown("### Rubén Núñez")
-st.markdown("#### Para: Luis Camacho")
-st.divider()
-
 st.title("💵 Construcción de Fondo de Reserva")
 
 # Barra lateral para los parámetros
