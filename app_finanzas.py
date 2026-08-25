@@ -5,6 +5,7 @@ st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layou
 
 # Encabezado personalizado
 st.title("Diagnóstico Financiero 📊")
+st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Determina tu estatus financiero y proyecta tus metas de ingresos en USD (\$).")
 
 # Nueva Leyenda del Diagnóstico
@@ -78,26 +79,35 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función para simular el presupuesto ideal con la distribución 60/20/10/10
+        # Función para simular el presupuesto ideal
         def mostrar_simulacion(ingreso_req, nivel):
             st.subheader(f"💡 Plan de Acción: {nivel}")
             
             if "Reestructuración" in nivel:
-                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** bajo la regla recomendada, tu estructura ideal sería:")
+                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** y manteniendo tus gastos fijos y variables actuales, tu estructura ideal sería:")
             else:
-                st.markdown(f"Para lograr el estado {nivel} (cubriendo tus gastos base actuales), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
+                st.markdown(f"Para lograr el estado {nivel} (cubriendo tus gastos fijos y variables actuales), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
                 st.write("Con ese nuevo nivel de ingresos, tu distribución ideal sería:")
             
-            # Cálculo basado estrictamente en la regla 60/20/10/10
-            fijos_sim = ingreso_req * 0.60
-            variables_sim = ingreso_req * 0.20
+            # 1. Mantener gastos fijos y variables actuales
+            fijos_sim = gastos_fijos
+            variables_sim = gastos_variables
+            
+            # 2. Dejar el 10% para ahorro y 10% para fondo sobre el nuevo ingreso calculado
             ahorro_sim = ingreso_req * 0.10
             fondo_sim = ingreso_req * 0.10
             
+            # 3. Calcular porcentajes reales para mostrarlos en la tabla
+            pct_fijos = (fijos_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
+            pct_vars = (variables_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
+            
+            # 4. Calcular si existe algún excedente (Ocurrirá en estado EXCELENTE)
+            excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
+            
             data = {
                 "Categoría": [
-                    "Gastos Fijos (60.0%)", 
-                    "Gastos Variables (20.0%)", 
+                    f"Gastos Fijos ({pct_fijos:.1f}%)", 
+                    f"Gastos Variables ({pct_vars:.1f}%)", 
                     "Ahorro (10.0%)", 
                     "Fondo/Inversión (10.0%)"
                 ],
@@ -108,6 +118,12 @@ if st.button("Hacer Diagnóstico", type="primary"):
                     fondo_sim
                 ]
             }
+            
+            # Mostrar la categoría de excedente si sobra dinero en la proyección
+            if excedente_sim > 0.01:
+                pct_excedente = (excedente_sim / ingreso_req) * 100
+                data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
+                data["Presupuesto Sugerido"].append(excedente_sim)
                 
             df_simulacion = pd.DataFrame(data)
             
