@@ -5,26 +5,44 @@ import numpy as np
 # Configuración de la página
 st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 
+# --- CONTROL DE ESTADO (SESSION STATE) ---
+# Inicializamos las variables en memoria si es la primera vez que se carga la app
+if "ingresos" not in st.session_state:
+    st.session_state.ingresos = 1860.0
+
+if "presupuesto_mensual" not in st.session_state:
+    st.session_state.presupuesto_mensual = 1860.0 * 0.30
+
+# Función que se ejecuta SOLO cuando cambias el monto de los ingresos
+def actualizar_presupuesto():
+    # Calcula el 30% del nuevo ingreso y lo asigna automáticamente al presupuesto
+    st.session_state.presupuesto_mensual = st.session_state.ingresos * 0.30
+# -----------------------------------------
+
 st.title("🧮 Calculadora de Deudas: Método Bola de Nieve")
 st.write("Esta aplicación proyecta el pago de tus deudas priorizando desde la más pequeña a la más grande, acelerando el proceso al reinvertir los pagos liberados.")
 
 # --- BARRA LATERAL ---
 st.sidebar.header("Parámetros Generales")
-ingresos = st.sidebar.number_input("Ingresos Totales", value=1860.0, step=100.0)
 
-# 1. Calculamos el límite estricto del 30% de los ingresos
+# 1. Ingresos (conectado a la variable de estado "ingresos" y a la función de actualización)
+ingresos = st.sidebar.number_input(
+    "Ingresos Totales", 
+    step=100.0,
+    key="ingresos", # Se vincula a st.session_state.ingresos
+    on_change=actualizar_presupuesto # Al cambiar el número, dispara la función
+)
+
+# Límite estricto del 30% para el validador
 limite_presupuesto = ingresos * 0.30
 
-# 2. Aseguramos que el valor inicial (558.0) no sea mayor al límite para evitar errores de Streamlit
-valor_inicial = min(558.0, limite_presupuesto)
-
-# 3. Agregamos max_value y un tooltip de ayuda (help)
+# 2. Presupuesto (conectado a la variable de estado "presupuesto_mensual")
 presupuesto_mensual = st.sidebar.number_input(
     "Monto destinado al pago de deudas", 
-    value=float(valor_inicial), 
-    max_value=float(limite_presupuesto), # Aquí aplicamos el tope del 30%
+    max_value=float(limite_presupuesto), # Solo permite bajar el monto, no subirlo del 30%
     step=10.0,
-    help="Por recomendación financiera, este monto no puede superar el 30% de tus ingresos totales."
+    key="presupuesto_mensual", # Se vincula a st.session_state.presupuesto_mensual
+    help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
 )
 
 porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
