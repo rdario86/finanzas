@@ -79,77 +79,58 @@ if st.button("Hacer Diagnóstico", type="primary"):
 
         st.divider()
 
-        # Función para simular el presupuesto ideal manteniendo fijos los montos ingresados
-        def mostrar_simulacion(ingreso_req, nivel):
-            st.subheader(f"💡 Plan de Acción: {nivel}")
+        # Nueva función: Muestra las DOS opciones claras para llegar al nivel deseado
+        def mostrar_planes(nivel, target_pct):
+            st.subheader(f"💡 Planes de Acción para lograr estado: {nivel}")
             
-            if "Reestructuración" in nivel:
-                st.markdown(f"Distribuyendo tus ingresos actuales de **\$ {ingreso_req:,.2f}** y manteniendo tus gastos fijos y variables actuales, tu estructura ideal sería:")
-            else:
-                st.markdown(f"Para lograr el estado {nivel} (cubriendo tus gastos fijos y variables actuales), tus ingresos deben ser de al menos **\$ {ingreso_req:,.2f}**.")
+            col_a, col_b = st.columns(2)
             
-            # 1. Los montos de la simulación serán EXACTAMENTE los que ingresaste arriba
-            fijos_sim = gastos_fijos
-            variables_sim = gastos_variables
-            
-            # 2. Se calcula el 10% para ahorro y 10% para fondo sobre el nuevo ingreso
-            ahorro_sim = ingreso_req * 0.10
-            fondo_sim = ingreso_req * 0.10
-            
-            # 3. Se calculan los porcentajes reales para mostrarlos en la tabla de forma exacta
-            pct_fijos = (fijos_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
-            pct_vars = (variables_sim / ingreso_req) * 100 if ingreso_req > 0 else 0
-            
-            # 4. Cálculo de excedente si la meta es Excelente
-            excedente_sim = ingreso_req - (fijos_sim + variables_sim + ahorro_sim + fondo_sim)
-            
-            data = {
-                "Categoría": [
-                    f"Gastos Fijos ({pct_fijos:.1f}%)", 
-                    f"Gastos Variables ({pct_vars:.1f}%)", 
-                    "Ahorro (10.0%)", 
-                    "Fondo/Inversión (10.0%)"
-                ],
-                "Presupuesto Sugerido": [
-                    fijos_sim,
-                    variables_sim,
-                    ahorro_sim,
-                    fondo_sim
-                ]
-            }
-            
-            if excedente_sim > 0.01:
-                pct_excedente = (excedente_sim / ingreso_req) * 100
-                data["Categoría"].append(f"Excedente Libre ({pct_excedente:.1f}%)")
-                data["Presupuesto Sugerido"].append(excedente_sim)
+            # --- OPCIÓN A: MANTENER INGRESOS, AJUSTAR GASTOS ---
+            with col_a:
+                st.markdown(f"**Opción A: Reestructurar Gastos**")
+                st.write(f"Manteniendo tus ingresos actuales de **\$ {ingresos:,.2f}**, tu distribución debe ser exactamente:")
                 
-            df_simulacion = pd.DataFrame(data)
-            
-            # Formateo de moneda
-            df_simulacion["Presupuesto Sugerido"] = df_simulacion["Presupuesto Sugerido"].apply(lambda x: f"$ {x:,.2f}")
-            
-            st.table(df_simulacion)
+                df_opcion_a = pd.DataFrame({
+                    "Categoría": ["Gastos Fijos (60%)", "Gastos Variables (20%)", "Ahorro (10%)", "Fondo/Inversión (10%)"],
+                    "Presupuesto": [ingresos * 0.60, ingresos * 0.20, ingresos * 0.10, ingresos * 0.10]
+                })
+                df_opcion_a["Presupuesto"] = df_opcion_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
+                st.table(df_opcion_a)
 
-        # Lógica de proyecciones según el estado actual
+            # --- OPCIÓN B: MANTENER GASTOS, AUMENTAR INGRESOS ---
+            with col_b:
+                ingreso_requerido = total_fijos_vars / target_pct if target_pct > 0 else 0
+                st.markdown(f"**Opción B: Aumentar Ingresos**")
+                st.write(f"Manteniendo tus gastos iniciales, debes elevar tus ingresos a **\$ {ingreso_requerido:,.2f}**:")
+                
+                # Ahorro y fondo se calculan sobre el NUEVO ingreso
+                ahorro_sim = ingreso_requerido * 0.10
+                fondo_sim = ingreso_requerido * 0.10
+                
+                # Porcentajes de los gastos fijos iniciales sobre la nueva meta
+                pct_fijos_real = (gastos_fijos / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
+                pct_vars_real = (gastos_variables / ingreso_requerido) * 100 if ingreso_requerido > 0 else 0
+                
+                # Excedente libre (para el caso de EXCELENTE que target es 70%)
+                excedente_sim = ingreso_requerido - (gastos_fijos + gastos_variables + ahorro_sim + fondo_sim)
+                
+                cats_b = [f"Gastos Fijos ({pct_fijos_real:.1f}%)", f"Gastos Vars ({pct_vars_real:.1f}%)", "Ahorro (10%)", "Fondo/Inv. (10%)"]
+                montos_b = [gastos_fijos, gastos_variables, ahorro_sim, fondo_sim]
+                
+                if excedente_sim > 0.01:
+                    pct_excedente = (excedente_sim / ingreso_requerido) * 100
+                    cats_b.append(f"Excedente Libre ({pct_excedente:.1f}%)")
+                    montos_b.append(excedente_sim)
+                
+                df_opcion_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
+                df_opcion_b["Presupuesto"] = df_opcion_b["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
+                st.table(df_opcion_b)
+
+        # Disparador de recomendaciones
         if estado == "CRÍTICO":
-            if balance < 0 and pct_fijos_vars < 70:
-                st.warning("⚠️ **Análisis Especial:** Tus gastos base (fijos + variables) son menores al 70% (¡excelente!), pero asumes deudas porque te excedes en ahorros o fondos. No necesitas ganar más, necesitas reestructurar tus salidas.")
-                mostrar_simulacion(ingresos, "Reestructuración (Ingreso Actual)")
-                
-            elif balance < 0 and pct_fijos_vars <= 80:
-                st.warning("⚠️ **Análisis Especial:** Tus gastos base (fijos + variables) son aceptables (menores al 80%), pero asumes deudas por asignar de más al ahorro/fondos. Puedes reestructurar tus gastos actuales, o apuntar al estado EXCELENTE incrementando tus ingresos.")
-                mostrar_simulacion(ingresos, "Reestructuración (Ingreso Actual)")
-                
-                ingreso_excelente = total_fijos_vars / 0.70 
-                mostrar_simulacion(ingreso_excelente, "EXCELENTE")
-                
-            else:
-                ingreso_aceptable = total_fijos_vars / 0.80
-                mostrar_simulacion(ingreso_aceptable, "ACEPTABLE")
-                
-                ingreso_excelente = total_fijos_vars / 0.70 
-                mostrar_simulacion(ingreso_excelente, "EXCELENTE")
-
+            mostrar_planes("ACEPTABLE", 0.80)
+            st.divider()
+            mostrar_planes("EXCELENTE", 0.70)
+            
         elif estado == "ACEPTABLE":
-            ingreso_excelente = total_fijos_vars / 0.70
-            mostrar_simulacion(ingreso_excelente, "EXCELENTE")
+            mostrar_planes("EXCELENTE", 0.70)
