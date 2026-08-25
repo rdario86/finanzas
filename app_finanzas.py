@@ -8,13 +8,13 @@ st.title("Diagnóstico Financiero 📊")
 st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Ingresa tus salidas mensuales actuales para evaluar tu estructura financiera.")
 
-# Nueva Leyenda del Diagnóstico (Regla de Fijos)
+# Nueva Leyenda del Diagnóstico (Regla combinada)
 with st.expander("ℹ️ Nueva Regla: ¿Cómo se evalúa el estatus financiero?"):
     st.markdown("""
-    El estado de tus finanzas se determina ahora **exclusivamente** por el porcentaje que representan tus **Gastos Fijos** sobre el total de tus salidas (tu ingreso actual estimado):
-    - 🟢 **EXCELENTE:** Gastos fijos son menores al **50%**.
-    - 🟡 **ACEPTABLE:** Gastos fijos entre el **50%** y el **60%**.
-    - 🔴 **CRÍTICO:** Gastos fijos mayores al **60%**.
+    El estado de tus finanzas se determina evaluando el peso de tus **Gastos Fijos** y la suma total de **Gastos Fijos + Variables** sobre tu flujo mensual:
+    - 🟢 **EXCELENTE:** Gastos fijos menores al **50%** o Gastos fijos + variables menores al **70%**.
+    - 🟡 **ACEPTABLE:** Gastos fijos entre **50%** y **60%** o Gastos fijos + variables entre **70%** y **80%**.
+    - 🔴 **CRÍTICO:** Gastos fijos mayores al **60%** o Gastos fijos + variables mayores al **80%**.
     """)
 
 st.divider()
@@ -45,28 +45,30 @@ if st.button("Hacer Diagnóstico", type="primary"):
         
         st.info(f"💡 Sumando tus gastos y asignaciones actuales, estimamos que tu nivel de ingresos (o flujo de caja) mensual es de **\$ {ingreso_actual_implicito:,.2f}**.")
         
-        # Análisis del Estatus (Basado SOLO en Gastos Fijos)
+        # Análisis del Estatus (Evaluando Fijos y Fijos + Variables)
         pct_fijos = (gastos_fijos / ingreso_actual_implicito) * 100
+        pct_fijos_vars = ((gastos_fijos + gastos_variables) / ingreso_actual_implicito) * 100
         
-        if pct_fijos > 60:
+        # Lógica en cascada: Prioriza la detección de riesgo
+        if pct_fijos > 60 or pct_fijos_vars > 80:
             estado = "CRÍTICO"
             color = "#dc3545" # Rojo
-            mensaje = f"Tus Gastos Fijos representan el **{pct_fijos:.1f}%** de tus salidas totales. Superan el límite seguro del 60%."
-        elif pct_fijos >= 50:
+            mensaje = f"Tus Gastos Fijos son el **{pct_fijos:.1f}%** y la suma con tus variables alcanza el **{pct_fijos_vars:.1f}%**. Has superado los límites seguros (60% y 80% respectivamente)."
+        elif (50 <= pct_fijos <= 60) or (70 <= pct_fijos_vars <= 80):
             estado = "ACEPTABLE"
             color = "#ffc107" # Amarillo
-            mensaje = f"Tus Gastos Fijos representan el **{pct_fijos:.1f}%** de tus salidas totales. Están dentro del rango saludable (50%-60%)."
+            mensaje = f"Tus Gastos Fijos son el **{pct_fijos:.1f}%** y la suma con tus variables es el **{pct_fijos_vars:.1f}%**. Te mantienes dentro de los rangos saludables."
         else:
             estado = "EXCELENTE"
             color = "#28a745" # Verde
-            mensaje = f"Tus Gastos Fijos representan el **{pct_fijos:.1f}%** de tus salidas totales. ¡Tienes una estructura muy ligera (por debajo del 50%)!"
+            mensaje = f"Tus Gastos Fijos son el **{pct_fijos:.1f}%** y la suma con tus variables es el **{pct_fijos_vars:.1f}%**. ¡Tienes una estructura muy ligera y óptima!"
 
         st.markdown(mensaje)
         st.markdown(f"Estatus actual de tu estructura: <strong style='color:{color}; font-size: 1.3em;'>{estado}</strong>", unsafe_allow_html=True)
 
         st.divider()
         
-        # --- NUEVO DESGLOSE DE FLUJO DE CAJA ---
+        # --- DESGLOSE DE FLUJO DE CAJA ---
         st.subheader("📊 Desglose de tu Flujo de Caja")
         st.write("Así se distribuye actualmente tu dinero en base a tus salidas totales:")
         
