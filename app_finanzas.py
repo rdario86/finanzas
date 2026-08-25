@@ -108,12 +108,15 @@ if st.button("Hacer Diagnóstico", type="primary"):
         # ==========================================================
         def mostrar_plan_accion():
             st.subheader("💡 Plan de Acción")
+            
+            # Cálculo del ingreso requerido para la meta principal (80%)
+            target_pct_a = 0.80
+            ingreso_req_a = total_fijos_vars / target_pct_a if target_pct_a > 0 else 0
+            
             col_a, col_b = st.columns(2)
             
-            # --- OPCIÓN A: ACEPTABLE (Target 80%) ---
+            # --- OPCIÓN A: ACEPTABLE (Target 80% con gastos reales) ---
             with col_a:
-                target_pct_a = 0.80
-                ingreso_req_a = total_fijos_vars / target_pct_a if target_pct_a > 0 else 0
                 st.markdown("**Opción A: Nivel ACEPTABLE**")
                 st.write(f"Para que tus gastos actuales sean el 80%, debes ganar **\$ {ingreso_req_a:,.2f}**:")
                 
@@ -134,24 +137,27 @@ if st.button("Hacer Diagnóstico", type="primary"):
                 df_a["Presupuesto"] = df_a["Presupuesto"].apply(lambda x: f"$ {x:,.2f}")
                 st.table(df_a)
 
-            # --- OPCIÓN B: EXCELENTE (Target 70%) ---
+            # --- OPCIÓN B: EXCELENTE (Mismo ingreso, forzando Variables al 20%) ---
             with col_b:
-                target_pct_b = 0.70
-                ingreso_req_b = total_fijos_vars / target_pct_b if target_pct_b > 0 else 0
                 st.markdown("**Opción B: Nivel EXCELENTE**")
-                st.write(f"Para que tus gastos actuales sean el 70%, debes ganar **\$ {ingreso_req_b:,.2f}**:")
+                st.write(f"Con el ingreso de la Opción A (**\$ {ingreso_req_a:,.2f}**), ajustando tus gastos variables al 20%:")
                 
-                ahorro_b = ingreso_req_b * 0.10
-                fondo_b = ingreso_req_b * 0.10
-                pct_fijos_b = (gastos_fijos / ingreso_req_b) * 100 if ingreso_req_b > 0 else 0
-                pct_vars_b = (gastos_variables / ingreso_req_b) * 100 if ingreso_req_b > 0 else 0
-                excedente_b = ingreso_req_b - (gastos_fijos + gastos_variables + ahorro_b + fondo_b)
+                var_b = ingreso_req_a * 0.20
+                ahorro_b = ingreso_req_a * 0.10
+                fondo_b = ingreso_req_a * 0.10
+                pct_fijos_b = (gastos_fijos / ingreso_req_a) * 100 if ingreso_req_a > 0 else 0
                 
-                cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", f"Variables ({pct_vars_b:.1f}%)", "Ahorro (10%)", "Inversión (10%)"]
-                montos_b = [gastos_fijos, gastos_variables, ahorro_b, fondo_b]
+                # Excedente o déficit matemático basado en el recorte/aumento de variables
+                excedente_b = ingreso_req_a - (gastos_fijos + var_b + ahorro_b + fondo_b)
+                
+                cats_b = [f"Fijos ({pct_fijos_b:.1f}%)", "Variables (20.0%)", "Ahorro (10.0%)", "Inversión (10.0%)"]
+                montos_b = [gastos_fijos, var_b, ahorro_b, fondo_b]
                 
                 if excedente_b > 0.01:
-                    cats_b.append(f"Excedente Libre ({(excedente_b/ingreso_req_b)*100:.1f}%)")
+                    cats_b.append(f"Excedente Libre ({(excedente_b/ingreso_req_a)*100:.1f}%)")
+                    montos_b.append(excedente_b)
+                elif excedente_b < -0.01:
+                    cats_b.append(f"Déficit Matemático ({(abs(excedente_b)/ingreso_req_a)*100:.1f}%)")
                     montos_b.append(excedente_b)
                     
                 df_b = pd.DataFrame({"Categoría": cats_b, "Presupuesto": montos_b})
