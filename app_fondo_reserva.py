@@ -2,22 +2,46 @@ import streamlit as st
 import pandas as pd
 
 # Configuración de la página
-st.set_page_config(page_title="Fondo de Reserva", page_icon="💰", layout="centered")
+st.set_page_config(page_title="Fondo de Reserva", layout="wide")
 
 # Encabezado del reporte
-st.title("Construcción de Fondo de Reserva")
+st.markdown("### Rubén Núñez")
+st.markdown("#### Para: Luis Camacho")
+st.divider()
 
-# Barra lateral para parámetros en porcentajes
+st.title("💵 Construcción de Fondo de Reserva")
+
+# Barra lateral para los parámetros
 with st.sidebar:
     st.header("Parámetros")
     ingresos = st.number_input("Ingresos Mensuales ($)", min_value=0.0, value=4100.0, step=100.0)
-    porc_gastos = st.number_input("% de Gastos Fijos", min_value=0.0, max_value=100.0, value=60.0, step=1.0) / 100.0
-    porc_disponible = st.number_input("% Disponible para Ahorro", min_value=0.0, max_value=100.0, value=10.0, step=1.0) / 100.0
+    
+    # Límite y valor automático para Gastos Fijos (60% de ingresos)
+    max_gastos = float(ingresos * 0.60)
+    gastos_fijos = st.number_input(
+        "Gastos Fijos Mensuales ($)", 
+        min_value=0.0, 
+        max_value=max_gastos, 
+        value=max_gastos, 
+        step=10.0,
+        help="El monto máximo permitido equivale al 60% de tus ingresos."
+    )
+    
+    # Límite y valor automático para Ahorro (40% de ingresos)
+    max_ahorro = float(ingresos * 0.40)
+    ahorro_mensual = st.number_input(
+        "Disponible para Ahorro ($)", 
+        min_value=0.0, 
+        max_value=max_ahorro, 
+        value=max_ahorro, 
+        step=10.0,
+        help="El monto máximo permitido equivale al 40% de tus ingresos."
+    )
+    
     meses_reserva = st.number_input("Meses de Reserva (Meta)", min_value=1, value=3, step=1)
 
-# Cálculos dinámicos
-gastos_fijos = ingresos * porc_gastos
-ahorro_mensual = ingresos * porc_disponible
+# Cálculos
+porc_gastos = (gastos_fijos / ingresos) if ingresos > 0 else 0
 meta = gastos_fijos * meses_reserva
 ingreso_req = gastos_fijos / porc_gastos if porc_gastos > 0 else 0
 
@@ -29,7 +53,7 @@ col2.metric("Gastos Fijos", f"${gastos_fijos:,.2f}")
 col3.metric("Ahorro Mensual", f"${ahorro_mensual:,.2f}")
 col4.metric("Meta Fondo", f"${meta:,.2f}")
 
-# Explicación de la meta con los símbolos de dólar corregidos (\$)
+# Explicación de la meta con los símbolos de dólar escapados (\$)
 st.write(f"Para lograr este nivel (manteniendo tus gastos fijos en **\${gastos_fijos:,.2f}**), tus ingresos deben ser de al menos **\${ingreso_req:,.2f}**.")
 st.write(f"Tu meta total de fondo de reserva será de **\${meta:,.2f}**.")
 
