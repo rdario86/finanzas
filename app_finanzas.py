@@ -59,7 +59,7 @@ if st.button("Hacer Diagnóstico", type="primary"):
         if balance < 0:
             estado = "CRÍTICO"
             color = "#dc3545"
-            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos."
+            mensaje_pct = f"Tus gastos fijos y variables representan el **{pct_fijos_vars:.1f}%** de tus ingresos, pero asumes deudas."
         elif pct_fijos_vars < 70:
             estado = "EXCELENTE"
             color = "#28a745"
@@ -83,39 +83,23 @@ if st.button("Hacer Diagnóstico", type="primary"):
         # ==========================================================
         if balance < 0:
             st.subheader("🚨 Plan de Rescate Inmediato")
-            st.markdown("Antes de proyectar metas a futuro, la **primera regla financiera** es frenar la deuda. Para lograrlo usando tus ingresos actuales, debes ejecutar un recorte estricto en el siguiente orden de prioridad:")
+            st.markdown("Antes de proyectar metas a futuro, la **primera regla financiera** es frenar la deuda. Para lograrlo usando tus ingresos actuales, tu presupuesto debe reestructurarse bajo la regla de emergencia **60/20/20** (suspendiendo temporalmente el ahorro y la inversión):")
             
-            deuda_actual = abs(balance)
-            var_rec = gastos_variables
-            ahorro_rec = ahorro
-            fondo_rec = fondo_reserva
-            
-            # 1. Recortar Gastos Variables
-            recorte_var = min(deuda_actual, var_rec)
-            var_rec -= recorte_var
-            deuda_actual -= recorte_var
-            
-            # 2. Recortar Ahorro (si aún hay deuda)
-            recorte_ahorro = min(deuda_actual, ahorro_rec)
-            ahorro_rec -= recorte_ahorro
-            deuda_actual -= recorte_ahorro
-            
-            # 3. Recortar Fondo (si aún hay deuda)
-            recorte_fondo = min(deuda_actual, fondo_rec)
-            fondo_rec -= recorte_fondo
-            deuda_actual -= recorte_fondo
+            fijos_rescate = ingresos * 0.60
+            var_rescate = ingresos * 0.20
+            deudas_rescate = ingresos * 0.20
             
             df_rescate = pd.DataFrame({
-                "Categoría (Orden de Recorte)": ["Gastos Fijos (Intocables)", "Gastos Variables", "Ahorro", "Fondo de Reserva"],
-                "Presupuesto de Emergencia": [gastos_fijos, var_rec, ahorro_rec, fondo_rec]
+                "Categoría": ["Gastos Fijos (60%)", "Gastos Variables (20%)", "Pago de Deudas (20%)"],
+                "Presupuesto de Emergencia": [fijos_rescate, var_rescate, deudas_rescate]
             })
             df_rescate["Presupuesto de Emergencia"] = df_rescate["Presupuesto de Emergencia"].apply(lambda x: f"$ {x:,.2f}")
             st.table(df_rescate)
             
-            if deuda_actual > 0:
-                st.error(f"⚠️ **ALERTA CRÍTICA:** Incluso recortando a **$0** tus gastos variables, ahorros y fondo de reserva, tus Gastos Fijos (**\$ {gastos_fijos:,.2f}**) superan tus Ingresos Totales. Matemáticamente sigues en déficit por **\$ {deuda_actual:,.2f}**. Tu única salida real es inyectar capital.")
+            if gastos_fijos > fijos_rescate:
+                st.error(f"⚠️ **ALERTA CRÍTICA:** Tus Gastos Fijos actuales (**\$ {gastos_fijos:,.2f}**) superan el límite del 60% (**\$ {fijos_rescate:,.2f}**) permitido en este plan de emergencia. Tienes un problema estructural: debes reducir drásticamente tu estilo de vida fijo o tu única salida será inyectar capital (ver opciones abajo).")
             else:
-                st.success("✅ Ajustando tus salidas a estos montos exactos de emergencia, lograrás empatar tus egresos con el total de tus ingresos actuales (**\$ {:.2f}**), frenando el endeudamiento. Luego de estabilizarte, evalúa los siguientes planes para aumentar ingresos.".format(ingresos))
+                st.success("✅ Si logras ajustar tus salidas a estos montos exactos, lograrás frenar el endeudamiento e ir saldando tus compromisos. Luego de estabilizarte, evalúa los siguientes planes para aumentar ingresos.")
                 
             st.divider()
 
