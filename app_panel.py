@@ -63,19 +63,31 @@ col3.metric("Saldo Neto", f"${saldo:,.2f}")
 
 st.markdown("---")
 
-# --- HISTORIAL Y GESTIÓN DE REGISTROS (EDICIÓN INTERACTIVA) ---
+# --- HISTORIAL Y GESTIÓN DE REGISTROS (SOLO ELIMINAR) ---
 st.subheader("Historial de Movimientos")
-st.info("💡 **Tip:** Selecciona la casilla izquierda de una fila y presiona la papelera para eliminarla, o haz doble clic en cualquier celda para editar su contenido.")
+st.info("💡 **Tip:** Marca la casilla 'Seleccionar' de los registros que desees borrar y presiona el botón de eliminar que aparecerá abajo.")
 
-# data_editor reemplaza a dataframe y permite la edición/eliminación nativa
+# Creamos una copia visual y le insertamos una columna de casillas de verificación
+df_visual = df.copy()
+df_visual.insert(0, "Seleccionar", False)
+
+# Mostramos la tabla bloqueando todas las columnas originales para que no se puedan editar
+columnas_datos = df.columns.tolist()
 df_editado = st.data_editor(
-    df,
+    df_visual,
     use_container_width=True,
-    num_rows="dynamic", # Esta propiedad habilita la selección y eliminación de filas
-    hide_index=True
+    hide_index=True,
+    disabled=columnas_datos # Solo la columna "Seleccionar" quedará interactiva
 )
 
-# Comparamos el DataFrame original con el editado. Si hay cambios, guardamos.
-if not df.equals(df_editado):
-    guardar_datos(df_editado)
-    st.rerun() # Recarga para actualizar de inmediato los saldos en la parte superior
+# Identificamos qué filas fueron marcadas por el usuario
+filas_a_eliminar = df_editado[df_editado["Seleccionar"]].index
+
+# Si hay al menos una fila seleccionada, mostramos el botón de eliminación
+if len(filas_a_eliminar) > 0:
+    if st.button("🗑️ Eliminar Registros Seleccionados", type="primary"):
+        # Eliminamos las filas seleccionadas y reiniciamos el índice
+        df = df.drop(filas_a_eliminar).reset_index(drop=True)
+        guardar_datos(df)
+        st.success("¡Registros eliminados!")
+        st.rerun() # Recarga para actualizar la vista de inmediato
