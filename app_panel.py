@@ -2,33 +2,50 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import io
 
-# Archivo de persistencia de datos (Ahora en Excel)
+# Archivo de persistencia de datos local
 ARCHIVO_DATOS = "Control_Mensual.xlsx"
 
 def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
         try:
-            # Intenta leer el archivo Excel
             df = pd.read_excel(ARCHIVO_DATOS)
             df['Fecha'] = pd.to_datetime(df['Fecha']).dt.date
             return df
         except Exception as e:
-            # Si el archivo está dañado o no es un Excel válido, muestra un error en pantalla pero no colapsa la app
-            st.error(f"⚠️ Se encontró un problema con el archivo Excel actual. Se iniciará una base en blanco. (Detalle: {e})")
+            st.error(f"⚠️ Error al leer archivo local: {e}")
             return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
     else:
-        # Si el archivo no existe, crea la estructura en blanco
         return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
 
 def guardar_datos(df):
-    # Guardamos en formato Excel usando el motor openpyxl
     df.to_excel(ARCHIVO_DATOS, index=False, engine='openpyxl')
 
 st.set_page_config(page_title="Control Mensual", layout="wide")
 st.title("Panel de Control de Ingresos y Gastos")
 
+# --- BARRA LATERAL: IMPORTACIÓN Y RESPALDO ---
+st.sidebar.header("Gestión de Base de Datos")
+
+# Módulo para cargar un archivo Excel existente
+archivo_subido = st.sidebar.file_uploader("📂 Importar archivo anterior (.xlsx)", type=["xlsx"])
+
+# Si el usuario sube un archivo, leemos ese archivo y lo guardamos como el nuevo estado local
+if archivo_subido is not None:
+    try:
+        df_importado = pd.read_excel(archivo_subido)
+        # Nos aseguramos que tenga el formato de fecha correcto
+        df_importado['Fecha'] = pd.to_datetime(df_importado['Fecha']).dt.date
+        guardar_datos(df_importado) # Sobrescribe el local con el subido
+        st.sidebar.success("¡Base de datos importada exitosamente!")
+    except Exception as e:
+        st.sidebar.error(f"Error al importar: {e}")
+
+# Cargamos el DataFrame principal (ya sea el local que teníamos, o el que acabamos de importar)
 df = cargar_datos()
+
+st.sidebar.markdown("---")
 
 # --- BARRA LATERAL: INGRESO DE DATOS ---
 st.sidebar.header("Registrar Movimiento")
@@ -44,8 +61,6 @@ else:
 tipo = st.sidebar.selectbox("Tipo", opciones_tipo)
 descripcion = st.sidebar.text_input("Descripción")
 medio_pago = st.sidebar.selectbox("Medio de Pago", ["Efectivo", "Cuentas", "Billetera Digital", "Tarjeta de Crédito"])
-
-# Ingreso manual del monto exacto
 monto = st.sidebar.number_input("Monto", min_value=0.0, format="%.2f", step=10.0)
 
 submit = st.sidebar.button("Guardar Registro", type="primary", use_container_width=True)
@@ -67,14 +82,15 @@ if submit:
     else:
         st.sidebar.error("El monto debe ser mayor a 0.")
 
-# --- BOTÓN DE RESPALDO ---
+# --- BOTÓN DE RESPALDO (Descarga) ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("Respaldo de Datos")
+st.sidebar.subheader("Exportar Datos")
+st.sidebar.info("Recuerda descargar tu archivo antes de cerrar si estás en una nube pública.")
 
 if os.path.exists(ARCHIVO_DATOS):
     with open(ARCHIVO_DATOS, "rb") as file:
         st.sidebar.download_button(
-            label="📥 Descargar Excel",
+            label="📥 Descargar Excel Actualizado",
             data=file,
             file_name=f"Control_Mensual_{datetime.today().strftime('%d-%m-%Y')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -85,7 +101,9 @@ if os.path.exists(ARCHIVO_DATOS):
 st.subheader("Resumen General")
 
 df_temp = df.copy()
-df_temp['Fecha_DT'] = pd.to_datetime(df_temp['Fecha'])
+# Evitar error si el df está vacío al intentar usar str.contains o formatos
+if not df_temp.empty:
+    df_temp['Fecha_DT'] = pd.to_datetime(df_temp['Fecha'])
 
 col_filtro1, col_filtro2 = st.columns(2)
 
@@ -100,17 +118,18 @@ mes_seleccionado = col_filtro2.selectbox("Filtrar por Mes", meses)
 
 df_filtrado = df_temp.copy()
 
-if año_seleccionado != "Todos":
-    df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.year == año_seleccionado]
+if not df_filtrado.empty:
+    if año_seleccionado != "Todos":
+        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.year == año_seleccionado]
 
-if mes_seleccionado != "Todos":
-    mes_numero = meses.index(mes_seleccionado) 
-    df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.month == mes_numero]
+    if mes_seleccionado != "Todos":
+        mes_numero = meses.index(mes_seleccionado) 
+        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.month == mes_numero]
+    
+    df_filtrado = df_filtrado.drop(columns=['Fecha_DT'])
 
-df_filtrado = df_filtrado.drop(columns=['Fecha_DT'])
-
-ingresos_totales = df_filtrado[df_filtrado['Categoría'] == 'Ingreso']['Monto'].sum()
-gastos_totales = df_filtrado[df_filtrado['Categoría'] == 'Gasto']['Monto'].sum()
+ingresos_totales = df_filtrado[df_filtrado['Categoría'] == 'Ingreso']['Monto'].sum() if not df_filtrado.empty else 0
+gastos_totales = df_filtrado[df_filtrado['Categoría'] == 'Gasto']['Monto'].sum() if not df_filtrado.empty else 0
 saldo = ingresos_totales - gastos_totales
 
 col1, col2, col3 = st.columns(3)
@@ -122,31 +141,34 @@ st.markdown("---")
 
 # --- HISTORIAL Y GESTIÓN DE REGISTROS ---
 st.subheader("Historial de Movimientos")
-st.info("💡 **Tip:** Marca la casilla 'Seleccionar' para borrar registros. Los datos mostrados corresponden a los filtros aplicados arriba.")
 
-df_visual = df_filtrado.copy()
-df_visual.insert(0, "Seleccionar", False)
+if df.empty:
+    st.info("La base de datos está vacía. Registra tu primer movimiento o importa un archivo Excel.")
+else:
+    st.info("💡 **Tip:** Marca la casilla 'Seleccionar' para borrar registros. Los datos mostrados corresponden a los filtros aplicados arriba.")
 
-columnas_datos = df.columns.tolist()
+    df_visual = df_filtrado.copy()
+    df_visual.insert(0, "Seleccionar", False)
+    columnas_datos = df.columns.tolist()
 
-df_editado = st.data_editor(
-    df_visual,
-    use_container_width=True,
-    hide_index=True,
-    disabled=columnas_datos,
-    column_config={
-        "Monto": st.column_config.NumberColumn(
-            "Monto",
-            format="$ %.2f",
-        )
-    }
-)
+    df_editado = st.data_editor(
+        df_visual,
+        use_container_width=True,
+        hide_index=True,
+        disabled=columnas_datos,
+        column_config={
+            "Monto": st.column_config.NumberColumn(
+                "Monto",
+                format="$ %.2f",
+            )
+        }
+    )
 
-filas_seleccionadas_vista = df_editado[df_editado["Seleccionar"]].index
+    filas_seleccionadas_vista = df_editado[df_editado["Seleccionar"]].index
 
-if len(filas_seleccionadas_vista) > 0:
-    if st.button("🗑️ Eliminar Registros Seleccionados", type="primary"):
-        df = df.drop(filas_seleccionadas_vista).reset_index(drop=True)
-        guardar_datos(df)
-        st.success("¡Registros eliminados del archivo Excel!")
-        st.rerun()
+    if len(filas_seleccionadas_vista) > 0:
+        if st.button("🗑️ Eliminar Registros Seleccionados", type="primary"):
+            df = df.drop(filas_seleccionadas_vista).reset_index(drop=True)
+            guardar_datos(df)
+            st.success("¡Registros eliminados del archivo Excel!")
+            st.rerun()
