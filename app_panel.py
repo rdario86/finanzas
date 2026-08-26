@@ -23,7 +23,7 @@ def guardar_datos(df):
     df.to_excel(ARCHIVO_DATOS, index=False, engine='openpyxl')
 
 st.set_page_config(page_title="Control Mensual", layout="wide")
-st.title("Panel de Control de Ingresos y Gastos")
+st.title("💵 Panel de Control de Ingresos y Gastos")
 
 # --- BARRA LATERAL: IMPORTACIÓN Y RESPALDO ---
 st.sidebar.header("Gestión de Base de Datos")
