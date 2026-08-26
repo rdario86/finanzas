@@ -21,7 +21,7 @@ st.title("Panel de Control de Ingresos y Gastos")
 df = cargar_datos()
 
 # --- BARRA LATERAL: INGRESO DE DATOS ---
-with st.sidebar.form("formulario_registro"):
+with st.sidebar.form("formulario_registro", clear_on_submit=True):
     st.header("Registrar Movimiento")
     fecha = st.date_input("Fecha", datetime.today())
     categoria = st.selectbox("Categoría", ["Ingreso", "Gasto"])
@@ -37,7 +37,7 @@ with st.sidebar.form("formulario_registro"):
     
     if submit:
         nuevo_registro = pd.DataFrame([{
-            "Fecha": fecha, 
+            "Fecha": fecha.strftime("%Y-%m-%d"), 
             "Categoría": categoria, 
             "Tipo": tipo, 
             "Descripción": descripcion,
@@ -47,7 +47,7 @@ with st.sidebar.form("formulario_registro"):
         df = pd.concat([df, nuevo_registro], ignore_index=True)
         guardar_datos(df)
         st.success("¡Registro guardado exitosamente!")
-        st.rerun() # Recarga la página para actualizar los saldos de inmediato
+        st.rerun()
 
 # --- DASHBOARD PRINCIPAL ---
 st.subheader("Resumen General")
@@ -63,27 +63,19 @@ col3.metric("Saldo Neto", f"${saldo:,.2f}")
 
 st.markdown("---")
 
-# --- HISTORIAL Y GESTIÓN DE REGISTROS ---
+# --- HISTORIAL Y GESTIÓN DE REGISTROS (EDICIÓN INTERACTIVA) ---
 st.subheader("Historial de Movimientos")
+st.info("💡 **Tip:** Selecciona la casilla izquierda de una fila y presiona la papelera para eliminarla, o haz doble clic en cualquier celda para editar su contenido.")
 
-# Agregamos una columna de ID visual para que sea fácil identificar qué borrar
-df_visual = df.copy()
-df_visual.insert(0, 'ID', df_visual.index)
+# data_editor reemplaza a dataframe y permite la edición/eliminación nativa
+df_editado = st.data_editor(
+    df,
+    use_container_width=True,
+    num_rows="dynamic", # Esta propiedad habilita la selección y eliminación de filas
+    hide_index=True
+)
 
-# Mostramos la tabla
-st.dataframe(df_visual, use_container_width=True, hide_index=True)
-
-# Sección desplegable para eliminar
-with st.expander("🗑️ Eliminar un registro"):
-    if not df.empty:
-        # Usamos number_input para escribir el ID a borrar
-        id_borrar = st.number_input("Escribe el ID del registro que deseas eliminar:", min_value=0, max_value=len(df)-1, step=1)
-        
-        if st.button("Confirmar Eliminación", type="primary"):
-            # Eliminamos la fila y reiniciamos los índices
-            df = df.drop(id_borrar).reset_index(drop=True)
-            guardar_datos(df)
-            st.success(f"Registro {id_borrar} eliminado.")
-            st.rerun() # Actualiza la app automáticamente
-    else:
-        st.info("No hay registros en la base de datos.")
+# Comparamos el DataFrame original con el editado. Si hay cambios, guardamos.
+if not df.equals(df_editado):
+    guardar_datos(df_editado)
+    st.rerun() # Recarga para actualizar de inmediato los saldos en la parte superior
