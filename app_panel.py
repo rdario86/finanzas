@@ -3,19 +3,20 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# Archivo de persistencia de datos
-ARCHIVO_DATOS = "control_mensual.csv"
+# Archivo de persistencia de datos (Ahora en Excel)
+ARCHIVO_DATOS = "Control_Mensual.xlsx"
 
 def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
-        df = pd.read_csv(ARCHIVO_DATOS)
+        df = pd.read_excel(ARCHIVO_DATOS)
         df['Fecha'] = pd.to_datetime(df['Fecha']).dt.date
         return df
     else:
         return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
 
 def guardar_datos(df):
-    df.to_csv(ARCHIVO_DATOS, index=False)
+    # Guardamos en formato Excel usando el motor openpyxl
+    df.to_excel(ARCHIVO_DATOS, index=False, engine='openpyxl')
 
 st.set_page_config(page_title="Control Mensual", layout="wide")
 st.title("Panel de Control de Ingresos y Gastos")
@@ -37,7 +38,7 @@ tipo = st.sidebar.selectbox("Tipo", opciones_tipo)
 descripcion = st.sidebar.text_input("Descripción")
 medio_pago = st.sidebar.selectbox("Medio de Pago", ["Efectivo", "Cuentas", "Billetera Digital", "Tarjeta de Crédito"])
 
-# Ingreso manual del monto exacto sin porcentajes
+# Ingreso manual del monto exacto
 monto = st.sidebar.number_input("Monto", min_value=0.0, format="%.2f", step=10.0)
 
 submit = st.sidebar.button("Guardar Registro", type="primary", use_container_width=True)
@@ -54,7 +55,7 @@ if submit:
         }])
         df = pd.concat([df, nuevo_registro], ignore_index=True)
         guardar_datos(df)
-        st.success("¡Registro guardado exitosamente!")
+        st.success("¡Registro guardado en Excel exitosamente!")
         st.rerun()
     else:
         st.sidebar.error("El monto debe ser mayor a 0.")
@@ -107,7 +108,6 @@ df_visual.insert(0, "Seleccionar", False)
 
 columnas_datos = df.columns.tolist()
 
-# Aplicamos la configuración de columnas para agregar el símbolo $
 df_editado = st.data_editor(
     df_visual,
     use_container_width=True,
@@ -116,7 +116,7 @@ df_editado = st.data_editor(
     column_config={
         "Monto": st.column_config.NumberColumn(
             "Monto",
-            format="$ %.2f", # Esto añade el símbolo y dos decimales
+            format="$ %.2f",
         )
     }
 )
@@ -127,5 +127,5 @@ if len(filas_seleccionadas_vista) > 0:
     if st.button("🗑️ Eliminar Registros Seleccionados", type="primary"):
         df = df.drop(filas_seleccionadas_vista).reset_index(drop=True)
         guardar_datos(df)
-        st.success("¡Registros eliminados!")
+        st.success("¡Registros eliminados del archivo Excel!")
         st.rerun()
