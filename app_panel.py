@@ -8,10 +8,17 @@ ARCHIVO_DATOS = "Control_Mensual.xlsx"
 
 def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
-        df = pd.read_excel(ARCHIVO_DATOS)
-        df['Fecha'] = pd.to_datetime(df['Fecha']).dt.date
-        return df
+        try:
+            # Intenta leer el archivo Excel
+            df = pd.read_excel(ARCHIVO_DATOS)
+            df['Fecha'] = pd.to_datetime(df['Fecha']).dt.date
+            return df
+        except Exception as e:
+            # Si el archivo está dañado o no es un Excel válido, muestra un error en pantalla pero no colapsa la app
+            st.error(f"⚠️ Se encontró un problema con el archivo Excel actual. Se iniciará una base en blanco. (Detalle: {e})")
+            return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
     else:
+        # Si el archivo no existe, crea la estructura en blanco
         return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
 
 def guardar_datos(df):
