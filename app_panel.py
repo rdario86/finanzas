@@ -67,6 +67,20 @@ if submit:
     else:
         st.sidebar.error("El monto debe ser mayor a 0.")
 
+# --- BOTÓN DE RESPALDO ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("Respaldo de Datos")
+
+if os.path.exists(ARCHIVO_DATOS):
+    with open(ARCHIVO_DATOS, "rb") as file:
+        st.sidebar.download_button(
+            label="📥 Descargar Excel",
+            data=file,
+            file_name=f"Control_Mensual_{datetime.today().strftime('%d-%m-%Y')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
 # --- DASHBOARD PRINCIPAL ---
 st.subheader("Resumen General")
 
