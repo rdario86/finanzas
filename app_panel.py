@@ -10,7 +10,8 @@ def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
         return pd.read_csv(ARCHIVO_DATOS)
     else:
-        return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Monto"])
+        # Se agregó "Medio de Pago" a las columnas base
+        return pd.DataFrame(columns=["Fecha", "Categoría", "Tipo", "Descripción", "Medio de Pago", "Monto"])
 
 def guardar_datos(df):
     df.to_csv(ARCHIVO_DATOS, index=False)
@@ -28,7 +29,10 @@ with st.sidebar.form("formulario_registro"):
     tipo = st.selectbox("Tipo", ["Ordinario", "Extraordinario", "Gasto Fijo", "Gasto Variable", "Pago de Deudas"])
     descripcion = st.text_input("Descripción")
     
-    # Ingreso manual del monto exacto
+    # Nuevo selector para el medio de pago
+    medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Cuentas", "Billetera Digital", "Tarjeta de Crédito"])
+    
+    # Ingreso manual del monto exacto sin porcentajes
     monto = st.number_input("Monto", min_value=0.0, format="%.2f", step=10.0)
     
     submit = st.form_submit_button("Guardar Registro")
@@ -38,7 +42,8 @@ with st.sidebar.form("formulario_registro"):
             "Fecha": fecha, 
             "Categoría": categoria, 
             "Tipo": tipo, 
-            "Descripción": descripcion, 
+            "Descripción": descripcion,
+            "Medio de Pago": medio_pago, # Se incluye en el nuevo registro
             "Monto": monto
         }])
         df = pd.concat([df, nuevo_registro], ignore_index=True)
