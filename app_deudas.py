@@ -9,7 +9,7 @@ st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 # ==========================================================
 # FUNCIÓN PARA GENERAR EL REPORTE EN PDF (USANDO FPDF)
 # ==========================================================
-def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_resultado, df_historial_excedentes, num_meses):
+def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historial_excedentes, num_meses):
     class PDF(FPDF):
         def header(self):
             # Cabecera Corporativa
@@ -55,43 +55,14 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_r
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
     pdf.ln(6)
 
-    # --- SECCIÓN 2: TABLA DE DEUDAS INICIALES ---
+    # --- SECCIÓN 2: TABLA DE PROYECCIÓN ---
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 8, limpiar('2. Detalle de Deudas a Saldar'), 0, 1)
-
-    pdf.set_font('Arial', 'B', 9)
-    pdf.set_fill_color(240, 242, 246)
-    pdf.set_text_color(49, 51, 63)
-    
-    w_nom_deuda = 60
-    w_monto_ini = 40
-    
-    pdf.cell(w_nom_deuda, 7, limpiar('Deuda'), 1, 0, 'L', fill=True)
-    pdf.cell(w_monto_ini, 7, limpiar('Monto Inicial'), 1, 1, 'R', fill=True)
-    
-    pdf.set_font('Arial', '', 9)
-    pdf.set_text_color(0, 0, 0)
-    
-    for _, row in df_deudas_iniciales.iterrows():
-        pdf.cell(w_nom_deuda, 6, limpiar(str(row['Deuda'])), 1, 0, 'L')
-        pdf.cell(w_monto_ini, 6, limpiar(f"${row['Monto Inicial']:,.2f}"), 1, 1, 'R')
-        
-    pdf.set_font('Arial', 'B', 9)
-    pdf.set_fill_color(240, 242, 246)
-    pdf.cell(w_nom_deuda, 7, limpiar('TOTAL'), 1, 0, 'L', fill=True)
-    pdf.cell(w_monto_ini, 7, limpiar(f"${deuda_total_pdf:,.2f}"), 1, 1, 'R', fill=True)
-    
-    pdf.ln(8)
-
-    # --- SECCIÓN 3: TABLA DE PROYECCIÓN ---
-    pdf.set_font('Arial', 'B', 12)
-    pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 8, limpiar('3. Proyeccion de Pagos Mes a Mes'), 0, 1)
+    pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes'), 0, 1)
 
     # Cálculo dinámico del ancho de columnas para encajar en 277 mm de espacio impreso
     num_cols = len(df_resultado.columns)
-    w_deuda = max(25.0, 277.0 / (num_cols + 1))
+    w_deuda = max(35.0, 277.0 / (num_cols + 1)) # Se aumenta el ancho base a 35mm
     w_col = (277.0 - w_deuda) / (num_cols - 1)
     
     # Encabezados de la Tabla
@@ -118,7 +89,11 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_r
             val = row[col]
             if col == 'Deuda':
                 pdf.set_font('Arial', 'B', 7)
-                pdf.cell(w, 5, limpiar(str(val)), 1, 0, align)
+                texto_deuda = limpiar(str(val))
+                # CONTROL DE DESBORDAMIENTO: Ajusta o trunca el texto si excede el ancho de la celda
+                while pdf.get_string_width(texto_deuda) > (w - 2.0) and len(texto_deuda) > 3:
+                    texto_deuda = texto_deuda[:-4] + "..."
+                pdf.cell(w, 5, texto_deuda, 1, 0, align)
                 pdf.set_font('Arial', '', 7)
             elif col in ['Monto Inicial', 'Pago Mínimo']:
                 pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align)
@@ -174,14 +149,11 @@ def procesar_montos(val):
     
     # Manejamos los distintos formatos de miles y decimales
     if ',' in val_str and '.' in val_str:
-        # Si la coma está después del punto (Ej: 1.250,50 -> 1250.50)
         if val_str.rfind(',') > val_str.rfind('.'):
             val_str = val_str.replace('.', '').replace(',', '.')
         else:
-            # Si el punto está después de la coma (Ej: 1,250.50 -> 1250.50)
             val_str = val_str.replace(',', '')
     elif ',' in val_str:
-        # Si solo tiene coma, asumimos que es el decimal (Ej: 940,43 -> 940.43)
         val_str = val_str.replace(',', '.')
         
     try:
@@ -227,14 +199,11 @@ st.write(f"Tu presupuesto mensual fijo para el pago de deudas es de **\${presupu
 st.subheader("Ingresa tus Deudas")
 st.info("💡 **Tip:** Puedes copiar los datos (Texto y Montos) desde Excel y pegarlos directamente en la tabla.")
 
-# Las cantidades se inician como TEXTO ("250.00") en lugar de números para evitar que 
-# Streamlit dañe el formato de las comas al pegar la información.
 default_debts = pd.DataFrame({
     "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
     "Monto Inicial": ["250.00", "300.00", "1000.00", "1000.00", "2000.00"]
 })
 
-# Configuramos la columna para que acepte texto plano (así respeta el Ctrl+C / Ctrl+V de Excel)
 edited_debts = st.data_editor(
     default_debts, 
     num_rows="dynamic", 
@@ -396,7 +365,6 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 pdf_bytes = crear_pdf(
                     presupuesto_mensual=presupuesto_mensual, 
                     monto_minimo_total=monto_minimo_total, 
-                    df_deudas_iniciales=df_deudas, 
                     df_resultado=df_resultado, 
                     df_historial_excedentes=df_historial_excedentes, 
                     num_meses=len(historial_saldos)
