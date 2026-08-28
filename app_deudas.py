@@ -9,7 +9,7 @@ st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 # ==========================================================
 # FUNCIÓN PARA GENERAR EL REPORTE EN PDF (USANDO FPDF)
 # ==========================================================
-def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historial_excedentes, num_meses):
+def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado_pdf, df_historial_excedentes, num_meses):
     class PDF(FPDF):
         def header(self):
             # Cabecera Corporativa
@@ -43,7 +43,7 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.set_font('Arial', '', 10)
     
     col_w = 135
-    deuda_total_pdf = df_resultado['Monto Inicial'].sum()
+    deuda_total_pdf = df_resultado_pdf['Monto Inicial'].sum()
     excedente_ini = presupuesto_mensual - monto_minimo_total
     
     pdf.cell(col_w, 6, limpiar(f'Monto Total de Deudas: ${deuda_total_pdf:,.2f}'), 0, 0)
@@ -55,14 +55,14 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
     pdf.ln(6)
 
-    # --- SECCIÓN 2: TABLA DE PROYECCIÓN ---
+    # --- SECCIÓN 2: TABLA DE PROYECCIÓN (AHORA MUESTRA CUOTAS/PAGOS) ---
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes'), 0, 1)
+    pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes (Monto a Abonar)'), 0, 1)
 
     # Cálculo dinámico del ancho de columnas para encajar en 277 mm de espacio impreso
-    num_cols = len(df_resultado.columns)
-    w_deuda = max(35.0, 277.0 / (num_cols + 1)) # Se aumenta el ancho base a 35mm
+    num_cols = len(df_resultado_pdf.columns)
+    w_deuda = max(35.0, 277.0 / (num_cols + 1)) 
     w_col = (277.0 - w_deuda) / (num_cols - 1)
     
     # Encabezados de la Tabla
@@ -70,7 +70,7 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.set_fill_color(240, 242, 246)
     pdf.set_text_color(49, 51, 63)
     
-    for i, col in enumerate(df_resultado.columns):
+    for i, col in enumerate(df_resultado_pdf.columns):
         w = w_deuda if i == 0 else w_col
         align = 'L' if i == 0 else 'R'
         pdf.cell(w, 6, limpiar(col), 1, 0, align, fill=True)
@@ -80,10 +80,10 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(0, 0, 0)
     
-    columnas_meses = [c for c in df_resultado.columns if c.startswith("MES ")]
+    columnas_meses = [c for c in df_resultado_pdf.columns if c.startswith("MES ")]
 
-    for idx, row in df_resultado.iterrows():
-        for i, col in enumerate(df_resultado.columns):
+    for idx, row in df_resultado_pdf.iterrows():
+        for i, col in enumerate(df_resultado_pdf.columns):
             w = w_deuda if i == 0 else w_col
             align = 'L' if i == 0 else 'R'
             val = row[col]
@@ -106,15 +106,15 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
                     pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align)
         pdf.ln()
 
-    # Fila TOTAL SALDOS
+    # Fila TOTAL ABONADO
     pdf.set_font('Arial', 'B', 7)
     pdf.set_fill_color(240, 242, 246)
     pdf.set_text_color(49, 51, 63)
-    pdf.cell(w_deuda, 6, limpiar('TOTAL SALDOS'), 1, 0, 'L', fill=True)
-    pdf.cell(w_col, 6, limpiar(f"${df_resultado['Monto Inicial'].sum():,.2f}"), 1, 0, 'R', fill=True)
-    pdf.cell(w_col, 6, limpiar(f"${df_resultado['Pago Mínimo'].sum():,.2f}"), 1, 0, 'R', fill=True)
+    pdf.cell(w_deuda, 6, limpiar('TOTAL ABONADO'), 1, 0, 'L', fill=True)
+    pdf.cell(w_col, 6, limpiar(f"${df_resultado_pdf['Monto Inicial'].sum():,.2f}"), 1, 0, 'R', fill=True)
+    pdf.cell(w_col, 6, limpiar(f"${df_resultado_pdf['Pago Mínimo'].sum():,.2f}"), 1, 0, 'R', fill=True)
     for col in columnas_meses:
-        pdf.cell(w_col, 6, limpiar(f"${df_resultado[col].sum():,.2f}"), 1, 0, 'R', fill=True)
+        pdf.cell(w_col, 6, limpiar(f"${df_resultado_pdf[col].sum():,.2f}"), 1, 0, 'R', fill=True)
     pdf.ln()
 
     # Fila EXCEDENTE APLICADO
@@ -144,10 +144,8 @@ def procesar_montos(val):
     if isinstance(val, (int, float)):
         return float(val)
     
-    # Quitamos espacios y símbolos de moneda
     val_str = str(val).strip().replace('$', '').replace(' ', '')
     
-    # Manejamos los distintos formatos de miles y decimales
     if ',' in val_str and '.' in val_str:
         if val_str.rfind(',') > val_str.rfind('.'):
             val_str = val_str.replace('.', '').replace(',', '.')
@@ -216,7 +214,6 @@ edited_debts = st.data_editor(
     }
 )
 
-# APLICAMOS LA FUNCIÓN DE LIMPIEZA MATEMÁTICA
 edited_debts = edited_debts.dropna(subset=['Monto Inicial'])
 edited_debts['Monto Inicial'] = edited_debts['Monto Inicial'].apply(procesar_montos)
 
@@ -233,7 +230,6 @@ if st.button("Calcular Plan de Pagos", type="primary"):
         df_deudas = df_deudas.sort_values(by="Monto Inicial").reset_index(drop=True)
         suma_total_deudas = df_deudas["Monto Inicial"].sum()
         
-        # VALIDACIÓN: El presupuesto destinado no puede ser mayor que el total de las deudas
         if presupuesto_mensual > suma_total_deudas:
             st.error(
                 f"El monto destinado al pago de deudas (**\${presupuesto_mensual:,.2f}**) no puede ser mayor "
@@ -254,6 +250,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 n_deudas = len(saldos)
                 
                 historial_saldos = []
+                historial_pagos = [] # NUEVO: REGISTRAREMOS EL MONTO PAGADO CADA MES PARA EL PDF
                 historial_excedentes = [] 
                 mes = 1
                 limite_meses = 240 
@@ -278,25 +275,38 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                             dinero_disponible -= pago_extra
                             
                     saldos = saldos - pagos_del_mes
+                    
+                    # GUARDAMOS LOS 3 HISTORIALES
                     historial_saldos.append(saldos.copy())
+                    historial_pagos.append(pagos_del_mes.copy())
                     historial_excedentes.append(excedentes_del_mes.copy())
                     mes += 1
                     
                 columnas_meses = [f"MES {i+1}" for i in range(len(historial_saldos))]
                 
+                # DATAFRAME DE SALDOS (PARA LA WEB)
                 df_historial = pd.DataFrame(historial_saldos).T
                 df_historial.columns = columnas_meses
                 
+                # DATAFRAME DE PAGOS (PARA EL PDF)
+                df_historial_pagos = pd.DataFrame(historial_pagos).T
+                df_historial_pagos.columns = columnas_meses
+                
+                # DATAFRAME DE EXCEDENTES
                 df_historial_excedentes = pd.DataFrame(historial_excedentes).T
                 df_historial_excedentes.columns = columnas_meses
                 
+                # CREAMOS LOS RESULTADOS FINALES PARA AMBAS VISTAS
                 df_resultado = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
-                df_resultado = pd.concat([df_resultado, df_historial], axis=1)
+                df_resultado = pd.concat([df_resultado, df_historial], axis=1) # Saldos
+                
+                df_resultado_pdf = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
+                df_resultado_pdf = pd.concat([df_resultado_pdf, df_historial_pagos], axis=1) # Pagos/Cuotas
                 
                 st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
                 st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado individualmente)*")
                 
-                # Generación de tabla HTML personalizada
+                # Generación de tabla HTML personalizada para la Web
                 html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
                 html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
                 
@@ -365,7 +375,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 pdf_bytes = crear_pdf(
                     presupuesto_mensual=presupuesto_mensual, 
                     monto_minimo_total=monto_minimo_total, 
-                    df_resultado=df_resultado, 
+                    df_resultado_pdf=df_resultado_pdf, # Pasamos la tabla de pagos/cuotas!
                     df_historial_excedentes=df_historial_excedentes, 
                     num_meses=len(historial_saldos)
                 )
