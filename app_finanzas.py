@@ -40,7 +40,7 @@ def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_
     
     pdf.set_font('Arial', '', 12)
     pdf.multi_cell(0, 8, normalizar(f'Recomendación: {recomendacion}'))
-    pdf.ln(10)
+    pdf.ln(5)
     
     # SECCIÓN 3: Plan de Acción (Metas)
     if estado != "EXCELENTE":
@@ -76,6 +76,13 @@ def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_
             pdf.cell(0, 8, normalizar(f' - Inversión (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
             pdf.cell(0, 8, normalizar(f' - Excedente Libre (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
             pdf.ln(5)
+
+    # SECCIÓN 4: Nota sobre Deudas
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 8, normalizar('📌 Nota Importante sobre Deudas:'), 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 8, normalizar('De existir deudas, las mismas deben ser atacadas de forma prioritaria utilizando cualquier excedente libre, así como los fondos destinados a inversión, ahorro y recortando los gastos variables, hasta sanearlas por completo.'))
             
     # Retornar el archivo PDF en formato de bytes para el botón de descarga
     return pdf.output(dest='S').encode('latin-1')
