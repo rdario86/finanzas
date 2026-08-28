@@ -13,8 +13,6 @@ def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_
             self.set_font('Arial', 'B', 15)
             self.cell(0, 10, 'Diagnostico Financiero - Resultados', 0, 1, 'C')
             self.set_font('Arial', 'I', 10)
-            self.cell(0, 10, 'Panel de Control - Ruben Nunez', 0, 1, 'C')
-            self.ln(5)
 
     pdf = PDF()
     pdf.add_page()
