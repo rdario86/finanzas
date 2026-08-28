@@ -78,7 +78,12 @@ def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_
     pdf.set_font('Arial', '', 11)
     pdf.multi_cell(0, 8, normalizar('De existir deudas, las mismas deben ser atacadas de forma prioritaria utilizando cualquier excedente libre, así como los fondos destinados a inversión, ahorro y recortando los gastos variables, hasta sanearlas por completo.'))
             
-    return pdf.output(dest='S').encode('latin-1')
+    # CORRECCIÓN DE COMPATIBILIDAD FPDF / FPDF2
+    salida = pdf.output(dest='S')
+    if isinstance(salida, str):
+        return salida.encode('latin-1')
+    else:
+        return bytes(salida)
 
 # ==========================================================
 # INTERFAZ DE USUARIO (STREAMLIT)
@@ -107,7 +112,7 @@ with col1:
 with col2:
     gastos_fijos = st.number_input("Gastos Fijos Totales (\$)", min_value=0.0, value=650.0, step=50.0, format="%.2f")
 
-# INICIALIZAR LA MEMORIA DE STREAMLIT
+# INICIALIZAR LA MEMORIA
 if 'diagnostico_generado' not in st.session_state:
     st.session_state.diagnostico_generado = False
 
@@ -120,7 +125,6 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.error("Por favor, ingresa un monto válido para tus Gastos Fijos.")
         st.session_state.diagnostico_generado = False
     else:
-        # Activar la memoria de que el diagnóstico fue exitoso
         st.session_state.diagnostico_generado = True
 
 # SI LA MEMORIA ESTÁ ACTIVADA, MOSTRAMOS LOS RESULTADOS
@@ -233,6 +237,7 @@ if st.session_state.diagnostico_generado:
     st.subheader("📥 Llévate tu diagnóstico")
     st.write("Descarga un reporte profesional en PDF con tus resultados y estructura ideal.")
     
+    # Generar los bytes del PDF
     pdf_bytes = crear_pdf(
         ingresos=ingresos,
         gastos_fijos=gastos_fijos,
