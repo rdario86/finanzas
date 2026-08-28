@@ -1,9 +1,136 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from fpdf import FPDF
 
 # Configuración de la página
 st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
+
+# ==========================================================
+# FUNCIÓN PARA GENERAR EL REPORTE EN PDF (USANDO FPDF)
+# ==========================================================
+def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, df_historial_excedentes, num_meses):
+    class PDF(FPDF):
+        def header(self):
+            # Cabecera Corporativa
+            self.set_font('Arial', 'B', 14)
+            self.set_text_color(0, 51, 102) # Azul oscuro
+            self.cell(0, 10, 'REPORTE DE PLAN DE PAGOS - BOLA DE NIEVE', 0, 1, 'C')
+            self.line(10, 20, 287, 20)
+            self.ln(5)
+
+        def footer(self):
+            # Pie de página
+            self.set_y(-15)
+            self.set_font('Arial', 'I', 8)
+            self.set_text_color(128, 128, 128)
+            self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
+
+    # Orientación Horizontal (Landscape) en A4 (297mm de ancho útil)
+    pdf = PDF(orientation='L', unit='mm', format='A4')
+    pdf.add_page()
+
+    # Función limpiadora de texto segura para FPDF
+    def limpiar(texto):
+        return str(texto).encode('latin-1', 'ignore').decode('latin-1')
+
+    # --- SECCIÓN 1: RESUMEN DE PARÁMETROS ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 8, limpiar('1. Resumen de Presupuesto y Estrategia'), 0, 1)
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Arial', '', 10)
+    
+    col_w = 90
+    pdf.cell(col_w, 6, limpiar(f'Ingresos Totales: ${ingresos:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Monto Destinado a Deudas: ${presupuesto_mensual:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Monto Pagos Minimos: ${monto_minimo_total:,.2f}'), 0, 1)
+    
+    excedente_ini = presupuesto_mensual - monto_minimo_total
+    pdf.cell(col_w, 6, limpiar(f'Bola de Nieve Inicial: ${excedente_ini:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
+    pdf.ln(4)
+
+    # --- SECCIÓN 2: TABLA DE PROYECCIÓN ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes'), 0, 1)
+
+    # Cálculo dinámico del ancho de columnas para encajar en 277 mm de espacio impreso
+    num_cols = len(df_resultado.columns)
+    w_deuda = max(25.0, 277.0 / (num_cols + 1))
+    w_col = (277.0 - w_deuda) / (num_cols - 1)
+    
+    # Encabezados de la Tabla
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_fill_color(240, 242, 246)
+    pdf.set_text_color(49, 51, 63)
+    
+    for i, col in enumerate(df_resultado.columns):
+        w = w_deuda if i == 0 else w_col
+        align = 'L' if i == 0 else 'R'
+        pdf.cell(w, 6, limpiar(col), 1, 0, align, fill=True)
+    pdf.ln()
+
+    # Filas de deudas
+    pdf.set_font('Arial', '', 7)
+    pdf.set_text_color(0, 0, 0)
+    
+    columnas_meses = [c for c in df_resultado.columns if c.startswith("MES ")]
+
+    for idx, row in df_resultado.iterrows():
+        for i, col in enumerate(df_resultado.columns):
+            w = w_deuda if i == 0 else w_col
+            align = 'L' if i == 0 else 'R'
+            val = row[col]
+            if col == 'Deuda':
+                pdf.set_font('Arial', 'B', 7)
+                pdf.cell(w, 5, limpiar(str(val)), 1, 0, align)
+                pdf.set_font('Arial', '', 7)
+            elif col in ['Monto Inicial', 'Pago Mínimo']:
+                pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align)
+            else:
+                exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
+                if exc_val > 0:
+                    pdf.set_fill_color(232, 244, 253) # Azul claro para destacar inyección de excedente
+                    pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align, fill=True)
+                else:
+                    pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align)
+        pdf.ln()
+
+    # Fila TOTAL SALDOS
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_fill_color(240, 242, 246)
+    pdf.set_text_color(49, 51, 63)
+    pdf.cell(w_deuda, 6, limpiar('TOTAL SALDOS'), 1, 0, 'L', fill=True)
+    pdf.cell(w_col, 6, limpiar(f"${df_resultado['Monto Inicial'].sum():,.2f}"), 1, 0, 'R', fill=True)
+    pdf.cell(w_col, 6, limpiar(f"${df_resultado['Pago Mínimo'].sum():,.2f}"), 1, 0, 'R', fill=True)
+    for col in columnas_meses:
+        pdf.cell(w_col, 6, limpiar(f"${df_resultado[col].sum():,.2f}"), 1, 0, 'R', fill=True)
+    pdf.ln()
+
+    # Fila EXCEDENTE APLICADO
+    pdf.set_fill_color(232, 244, 253)
+    pdf.set_text_color(0, 86, 179)
+    pdf.cell(w_deuda, 6, limpiar('EXCEDENTE APLICADO'), 1, 0, 'L', fill=True)
+    pdf.cell(w_col, 6, limpiar('-'), 1, 0, 'C', fill=True)
+    pdf.cell(w_col, 6, limpiar('-'), 1, 0, 'C', fill=True)
+    for col in columnas_meses:
+        tot_exc = df_historial_excedentes[col].sum()
+        pdf.cell(w_col, 6, limpiar(f"${tot_exc:,.2f}"), 1, 0, 'R', fill=True)
+    pdf.ln()
+
+    # Salida de bytes segura
+    salida = pdf.output(dest='S')
+    if isinstance(salida, str):
+        return salida.encode('latin-1', 'ignore')
+    else:
+        return bytes(salida)
+
+# ==========================================================
+# INTERFAZ DE USUARIO (STREAMLIT)
+# ==========================================================
 
 # --- CONTROL DE ESTADO (SESSION STATE) ---
 if "ingresos" not in st.session_state:
@@ -39,7 +166,19 @@ presupuesto_mensual = st.sidebar.number_input(
     help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
 )
 
-porcentaje_minimo = st.sidebar.number_input("% Pago Mínimo de deudas", value=4.0, step=0.1) / 100.0
+monto_minimo_total = st.sidebar.number_input(
+    "Monto Total de Pagos Mínimos", 
+    value=182.0, 
+    step=10.0,
+    help="Ingresa la suma de los pagos mínimos obligatorios de todas tus deudas."
+)
+
+if presupuesto_mensual > 0:
+    porcentaje_representado = (monto_minimo_total / presupuesto_mensual) * 100
+else:
+    porcentaje_representado = 0.0
+
+st.sidebar.caption(f"Representa el **{porcentaje_representado:.1f}%** del monto destinado a deudas.")
 # ---------------------
 
 # Resumen del presupuesto
@@ -60,11 +199,13 @@ if st.button("Calcular Plan de Pagos", type="primary"):
         st.warning("Por favor, ingresa al menos una deuda con un monto mayor a 0.")
     else:
         df_deudas = df_deudas.sort_values(by="Monto Inicial").reset_index(drop=True)
-        df_deudas["Pago Mínimo"] = df_deudas["Monto Inicial"] * porcentaje_minimo
+        
+        suma_total_deudas = df_deudas["Monto Inicial"].sum()
+        df_deudas["Pago Mínimo"] = (df_deudas["Monto Inicial"] / suma_total_deudas) * monto_minimo_total
         total_pago_minimo = df_deudas["Pago Mínimo"].sum()
         
         if presupuesto_mensual < total_pago_minimo:
-            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el monto destinado o tus ingresos.")
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar tus ingresos.")
         else:
             excedente_inicial = presupuesto_mensual - total_pago_minimo
             st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
@@ -147,10 +288,10 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 html_tabla += '</tr>\n'
             html_tabla += '</tbody>\n'
             
-            # --- SECCIÓN DE PIE DE PÁGINA (TFOOT) ---
+            # Pie de página de la tabla
             html_tabla += '<tfoot>\n'
             
-            # 1. Fila de Total de Saldos
+            # 1. TOTAL SALDOS
             html_tabla += '<tr style="border-top: 2px solid #a6a8b6; background-color: #f0f2f6; font-weight: bold; color: #31333F;">\n'
             html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL SALDOS</td>\n'
             html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Monto Inicial"].sum():,.2f}</td>\n'
@@ -160,23 +301,40 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado[col].sum():,.2f}</td>\n'
             html_tabla += '</tr>\n'
             
-            # 2. Fila de Excedente Disponible Aplicado
+            # 2. EXCEDENTE APLICADO
             html_tabla += '<tr style="background-color: #e8f4fd; font-weight: bold; color: #0056b3;">\n'
             html_tabla += '<td style="padding: 8px 12px; text-align: left;">EXCEDENTE APLICADO</td>\n'
             html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
             html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
             
             for col in columnas_meses:
-                # Sumamos todo el excedente utilizado en ese mes específico
                 total_excedente_mes = df_historial_excedentes[col].sum()
                 html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${total_excedente_mes:,.2f}</td>\n'
             html_tabla += '</tr>\n'
             
             html_tabla += '</tfoot>\n'
-            # ----------------------------------------
-            
             html_tabla += '</table>\n</div>'
             
             st.markdown(html_tabla, unsafe_allow_html=True)
             
-            st.info(f"Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+            st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+            
+            # --- DESCARGA DE REPORTE PDF CON FPDF ---
+            st.divider()
+            st.subheader("📥 Llévate tu plan de pagos")
+            
+            pdf_bytes = crear_pdf(
+                ingresos=ingresos, 
+                presupuesto_mensual=presupuesto_mensual, 
+                monto_minimo_total=monto_minimo_total, 
+                df_resultado=df_resultado, 
+                df_historial_excedentes=df_historial_excedentes, 
+                num_meses=len(historial_saldos)
+            )
+            
+            st.download_button(
+                label="📄 Descargar Reporte PDF Ejecutivo",
+                data=pdf_bytes,
+                file_name="Plan_de_Pagos_Bola_de_Nieve.pdf",
+                mime="application/pdf"
+            )
