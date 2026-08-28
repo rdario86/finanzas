@@ -9,7 +9,7 @@ st.set_page_config(page_title="Calculadora Bola de Nieve", layout="wide")
 # ==========================================================
 # FUNCIÓN PARA GENERAR EL REPORTE EN PDF (USANDO FPDF)
 # ==========================================================
-def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historial_excedentes, num_meses):
+def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_resultado, df_historial_excedentes, num_meses):
     class PDF(FPDF):
         def header(self):
             # Cabecera Corporativa
@@ -46,7 +46,6 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     deuda_total_pdf = df_resultado['Monto Inicial'].sum()
     excedente_ini = presupuesto_mensual - monto_minimo_total
     
-    # Inclusión del Monto Total de Deudas al inicio del resumen
     pdf.cell(col_w, 6, limpiar(f'Monto Total de Deudas: ${deuda_total_pdf:,.2f}'), 0, 0)
     pdf.cell(col_w, 6, limpiar(f'Monto Destinado a Deudas: ${presupuesto_mensual:,.2f}'), 0, 1)
     
@@ -54,12 +53,41 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.cell(col_w, 6, limpiar(f'Bola de Nieve Inicial: ${excedente_ini:,.2f}'), 0, 1)
     
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
-    pdf.ln(4)
+    pdf.ln(6)
 
-    # --- SECCIÓN 2: TABLA DE PROYECCIÓN ---
+    # --- NUEVA SECCIÓN: TABLA DE DEUDAS INICIALES ---
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes'), 0, 1)
+    pdf.cell(0, 8, limpiar('2. Detalle de Deudas a Saldar'), 0, 1)
+
+    pdf.set_font('Arial', 'B', 9)
+    pdf.set_fill_color(240, 242, 246)
+    pdf.set_text_color(49, 51, 63)
+    
+    w_nom_deuda = 60
+    w_monto_ini = 40
+    
+    pdf.cell(w_nom_deuda, 7, limpiar('Deuda'), 1, 0, 'L', fill=True)
+    pdf.cell(w_monto_ini, 7, limpiar('Monto Inicial'), 1, 1, 'R', fill=True)
+    
+    pdf.set_font('Arial', '', 9)
+    pdf.set_text_color(0, 0, 0)
+    
+    for _, row in df_deudas_iniciales.iterrows():
+        pdf.cell(w_nom_deuda, 6, limpiar(str(row['Deuda'])), 1, 0, 'L')
+        pdf.cell(w_monto_ini, 6, limpiar(f"${row['Monto Inicial']:,.2f}"), 1, 1, 'R')
+        
+    pdf.set_font('Arial', 'B', 9)
+    pdf.set_fill_color(240, 242, 246)
+    pdf.cell(w_nom_deuda, 7, limpiar('TOTAL'), 1, 0, 'L', fill=True)
+    pdf.cell(w_monto_ini, 7, limpiar(f"${deuda_total_pdf:,.2f}"), 1, 1, 'R', fill=True)
+    
+    pdf.ln(8)
+
+    # --- SECCIÓN 3: TABLA DE PROYECCIÓN ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 8, limpiar('3. Proyeccion de Pagos Mes a Mes'), 0, 1)
 
     # Cálculo dinámico del ancho de columnas para encajar en 277 mm de espacio impreso
     num_cols = len(df_resultado.columns)
@@ -168,15 +196,23 @@ st.sidebar.caption(f"Representa el **{porcentaje_representado:.1f}%** del monto 
 st.write(f"Tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
 
 st.subheader("Ingresa tus Deudas")
+st.info("💡 **Tip:** Puedes copiar los datos desde Excel y pegarlos directamente en la tabla.")
+
+# Estructura inicial vacía (o con ejemplos) para facilitar el pegado
 default_debts = pd.DataFrame({
     "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
     "Monto Inicial": [250.0, 300.0, 1000.0, 1000.0, 2000.0]
 })
 
+# El parámetro num_rows="dynamic" es vital para permitir copiar y pegar múltiples filas desde Excel
 edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
 
-# SUMATORIA EN TIEMPO REAL: Se calcula automáticamente al editar las filas
-total_deudas_ingresadas = edited_debts["Monto Inicial"].fillna(0).sum()
+# Limpiar filas vacías que puedan generarse al pegar mal los datos
+edited_debts = edited_debts.dropna(subset=['Monto Inicial'])
+edited_debts['Monto Inicial'] = pd.to_numeric(edited_debts['Monto Inicial'], errors='coerce').fillna(0)
+
+# SUMATORIA EN TIEMPO REAL
+total_deudas_ingresadas = edited_debts["Monto Inicial"].sum()
 st.metric(label="💰 Total Deuda Acumulada", value=f"${total_deudas_ingresadas:,.2f}")
 
 if st.button("Calcular Plan de Pagos", type="primary"):
@@ -320,6 +356,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 pdf_bytes = crear_pdf(
                     presupuesto_mensual=presupuesto_mensual, 
                     monto_minimo_total=monto_minimo_total, 
+                    df_deudas_iniciales=df_deudas, # Pasamos la tabla ordenada de deudas
                     df_resultado=df_resultado, 
                     df_historial_excedentes=df_historial_excedentes, 
                     num_meses=len(historial_saldos)
