@@ -5,81 +5,133 @@ from fpdf import FPDF
 st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layout="wide")
 
 # ==========================================================
-# FUNCIÓN PARA GENERAR EL REPORTE EN PDF
+# FUNCIÓN PARA GENERAR EL REPORTE EN PDF (DISEÑO PROFESIONAL)
 # ==========================================================
-def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_req_aceptable=None, ingreso_req_excelente=None):
+def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, ingreso_req_aceptable=None, ingreso_req_excelente=None):
     class PDF(FPDF):
         def header(self):
-            self.set_font('Arial', 'B', 15)
-            self.cell(0, 10, 'Diagnostico Financiero - Resultados', 0, 1, 'C')
-            self.set_font('Arial', 'I', 10)
+            # Cabecera Corporativa
+            self.set_font('Arial', 'B', 16)
+            self.set_text_color(0, 51, 102) # Azul oscuro
+            self.cell(0, 10, 'REPORTE DE DIAGNOSTICO FINANCIERO', 0, 1, 'C')
+            self.line(10, 22, 200, 22)
+            self.ln(10)
+            
+        def footer(self):
+            # Pie de página
+            self.set_y(-15)
+            self.set_font('Arial', 'I', 8)
+            self.set_text_color(128, 128, 128)
+            self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
     pdf = PDF()
     pdf.add_page()
     
-    def normalizar(texto):
-        return texto.encode('latin-1', 'replace').decode('latin-1')
+    # Función para asegurar que el texto sea compatible con PDF básico sin explotar
+    def limpiar(texto):
+        return str(texto).encode('latin-1', 'ignore').decode('latin-1')
 
-    # SECCIÓN 1: Resultados Actuales
+    # --- SECCIÓN 1: RESUMEN ACTUAL ---
+    pdf.set_font('Arial', 'B', 13)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, limpiar('1. Resumen de tu Estructura Actual'), 0, 1)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(60, 8, limpiar('Ingresos Totales Actuales:'), 0, 0)
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, normalizar('1. Tu Diagnóstico Actual'), 0, 1)
+    pdf.cell(0, 8, limpiar(f'${ingresos:,.2f}'), 0, 1)
     
     pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 8, normalizar(f'Ingresos Totales: ${ingresos:,.2f}'), 0, 1)
-    pdf.cell(0, 8, normalizar(f'Gastos Fijos Totales: ${gastos_fijos:,.2f}'), 0, 1)
-    pdf.cell(0, 8, normalizar(f'Peso de tus Gastos Fijos: {pct_fijos:.1f}%'), 0, 1)
-    pdf.ln(5)
-    
-    # SECCIÓN 2: Estatus y Recomendación
+    pdf.cell(60, 8, limpiar('Gastos Fijos Actuales:'), 0, 0)
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, normalizar(f'ESTATUS: {estado}'), 0, 1)
+    pdf.cell(0, 8, limpiar(f'${gastos_fijos:,.2f}'), 0, 1)
     
     pdf.set_font('Arial', '', 12)
-    pdf.multi_cell(0, 8, normalizar(f'Recomendación: {recomendacion}'))
+    pdf.cell(60, 8, limpiar('Peso de tus Gastos Fijos:'), 0, 0)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, limpiar(f'{pct_fijos:.1f}%'), 0, 1)
     pdf.ln(5)
     
-    # SECCIÓN 3: Plan de Acción (Metas)
-    if estado != "EXCELENTE":
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 10, normalizar('2. Plan de Acción: Metas de Ingreso'), 0, 1)
-        pdf.ln(2)
-        
-        if estado in ["CRÍTICO", "CRÍTICO EXTREMO"] and ingreso_req_aceptable is not None:
-            pdf.set_font('Arial', 'B', 11)
-            pdf.cell(0, 8, normalizar('Meta ACEPTABLE (Fijos al 60%)'), 0, 1)
-            pdf.set_font('Arial', '', 11)
-            pdf.cell(0, 8, normalizar(f'Ingreso Mínimo Requerido: ${ingreso_req_aceptable:,.2f}'), 0, 1)
-            
-            pdf.cell(0, 8, normalizar(f' - Gastos Fijos (60%): ${gastos_fijos:,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Gastos Variables (20%): ${(ingreso_req_aceptable*0.20):,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Ahorro (10%): ${(ingreso_req_aceptable*0.10):,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Inversión (10%): ${(ingreso_req_aceptable*0.10):,.2f}'), 0, 1)
-            pdf.ln(5)
-        
-        if ingreso_req_excelente is not None:
-            pdf.set_font('Arial', 'B', 11)
-            pdf.cell(0, 8, normalizar('Meta EXCELENTE (Fijos al 50%)'), 0, 1)
-            pdf.set_font('Arial', '', 11)
-            pdf.cell(0, 8, normalizar(f'Ingreso Mínimo Requerido: ${ingreso_req_excelente:,.2f}'), 0, 1)
-            
-            pdf.cell(0, 8, normalizar(f' - Gastos Fijos (50%): ${gastos_fijos:,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Gastos Variables (20%): ${(ingreso_req_excelente*0.20):,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Ahorro (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Inversión (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
-            pdf.cell(0, 8, normalizar(f' - Excedente Libre (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
-            pdf.ln(5)
+    # --- SECCIÓN 2: DIAGNÓSTICO Y ESTATUS ---
+    pdf.set_font('Arial', 'B', 13)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, limpiar('2. Diagnostico y Estatus'), 0, 1)
+    
+    # Lógica de colores y textos limpios para el reporte
+    if estado == "CRÍTICO EXTREMO":
+        r, g, b = 139, 0, 0 # Rojo oscuro
+        rec = "EMERGENCIA: Tus gastos fijos superan o igualan tus ingresos. Estas en bancarrota tecnica, asumiendo deudas solo para existir. Debes hacer recortes drasticos a tu estilo de vida base de inmediato."
+    elif estado == "CRÍTICO":
+        r, g, b = 220, 53, 69 # Rojo
+        rec = "ATENCION: Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Tienes un riesgo muy alto. Revisa el plan de accion para establecer una meta de facturacion segura."
+    elif estado == "ACEPTABLE":
+        r, g, b = 255, 153, 0 # Naranja/Amarillo oscuro para lectura en PDF
+        rec = "Vas por buen camino. Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa la meta propuesta para llevar tus finanzas al siguiente nivel de flexibilidad (Excelente)."
+    else:
+        r, g, b = 40, 167, 69 # Verde
+        rec = "EXCELENTE: Tu estructura es muy robusta. Manten tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio e invertir. No necesitas un plan de rescate."
 
-    # SECCIÓN 4: Nota sobre Deudas
-    pdf.ln(5)
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 8, normalizar('📌 Nota Importante sobre Deudas:'), 0, 1)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(r, g, b)
+    pdf.cell(0, 8, limpiar(f'ESTATUS ACTUAL: {estado}'), 0, 1)
+    
+    pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 8, normalizar('De existir deudas, las mismas deben ser atacadas de forma prioritaria utilizando cualquier excedente libre, así como los fondos destinados a inversión, ahorro y recortando los gastos variables, hasta sanearlas por completo.'))
+    pdf.multi_cell(0, 6, limpiar(rec))
+    pdf.ln(8)
+    
+    # --- SECCIÓN 3: PLAN DE ACCIÓN ---
+    if estado != "EXCELENTE":
+        pdf.set_font('Arial', 'B', 13)
+        pdf.set_text_color(0, 51, 102)
+        pdf.cell(0, 10, limpiar('3. Plan de Accion (Metas de Ingreso)'), 0, 1)
+        pdf.set_text_color(0, 0, 0)
+        
+        pdf.set_font('Arial', '', 11)
+        pdf.multi_cell(0, 6, limpiar('Tomando tus Gastos Fijos actuales como un ancla inamovible, a continuacion se detallan los niveles de ingresos minimos que debes alcanzar para optimizar tu presupuesto:'))
+        pdf.ln(4)
+        
+        # Función interna para dibujar las tablas de las metas
+        def dibujar_meta(titulo, req, p_fijos, p_vars, p_aho, p_inv, p_exc=0):
+            pdf.set_font('Arial', 'B', 11)
+            pdf.set_fill_color(240, 240, 240) # Fondo gris claro
+            pdf.cell(0, 8, limpiar(titulo), 0, 1, 'L', fill=True)
             
-    # CORRECCIÓN DE COMPATIBILIDAD FPDF / FPDF2
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(60, 8, limpiar('Ingreso Minimo Requerido:'), 0, 0)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, limpiar(f'${req:,.2f}'), 0, 1)
+            
+            pdf.set_font('Arial', '', 10)
+            pdf.cell(0, 6, limpiar(f'  - Gastos Fijos ({p_fijos}%): ${gastos_fijos:,.2f}'), 0, 1)
+            pdf.cell(0, 6, limpiar(f'  - Gastos Variables ({p_vars}%): ${(req*(p_vars/100)):,.2f}'), 0, 1)
+            pdf.cell(0, 6, limpiar(f'  - Ahorro ({p_aho}%): ${(req*(p_aho/100)):,.2f}'), 0, 1)
+            pdf.cell(0, 6, limpiar(f'  - Inversion ({p_inv}%): ${(req*(p_inv/100)):,.2f}'), 0, 1)
+            if p_exc > 0:
+                pdf.cell(0, 6, limpiar(f'  - Excedente Libre ({p_exc}%): ${(req*(p_exc/100)):,.2f}'), 0, 1)
+            pdf.ln(5)
+
+        if estado in ["CRÍTICO", "CRÍTICO EXTREMO"] and ingreso_req_aceptable:
+            dibujar_meta('META ACEPTABLE (Tus fijos representaran el 60%)', ingreso_req_aceptable, 60, 20, 10, 10)
+        
+        if ingreso_req_excelente:
+            dibujar_meta('META EXCELENTE (Tus fijos representaran el 50%)', ingreso_req_excelente, 50, 20, 10, 10, 10)
+
+    # --- SECCIÓN 4: NOTA SOBRE DEUDAS ---
+    pdf.ln(3)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 8, limpiar('Importante: La Regla de las Deudas'), 0, 1)
+    pdf.set_text_color(0, 0, 0)
+    
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 6, limpiar('De existir deudas activas, estas representan una urgencia financiera. Cualquier excedente libre, asi como los fondos destinados a inversion, ahorro y recortes en tus gastos variables, deben ser dirigidos de forma estricta y prioritaria al pago de dichas deudas hasta sanearlas por completo.'))
+            
+    # Compatibilidad de salida segura
     salida = pdf.output(dest='S')
     if isinstance(salida, str):
-        return salida.encode('latin-1')
+        return salida.encode('latin-1', 'ignore')
     else:
         return bytes(salida)
 
@@ -88,7 +140,6 @@ def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_
 # ==========================================================
 
 st.title("Diagnóstico Financiero 📊")
-st.markdown("#### Panel de Control - Rubén Núñez")
 st.markdown("Ingresa tus ingresos y tus gastos fijos para evaluar tu estructura y calcular tu meta de ingresos ideal.")
 
 with st.expander("ℹ️ Regla de Evaluación: El peso de tus Gastos Fijos"):
@@ -135,33 +186,34 @@ if st.session_state.diagnostico_generado:
     ingreso_req_aceptable = None
     ingreso_req_excelente = gastos_fijos / 0.50
     
+    # Mensajes para la Web (Con Emojis y Formato Markdown)
     if pct_fijos >= 100:
         estado = "CRÍTICO EXTREMO"
         color = "#8b0000"
         mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. ¡Tus compromisos fijos superan o igualan tu sueldo!"
-        recomendacion = "🚨 Emergencia: Estás en bancarrota técnica, asumiendo deudas solo para existir. Debes hacer recortes drásticos a tu estilo de vida base inmediatamente."
+        recomendacion = "🚨 **Emergencia:** Estás en bancarrota técnica, asumiendo deudas solo para existir. Debes hacer recortes drásticos a tu estilo de vida base inmediatamente."
         
     elif pct_fijos > 60:
         estado = "CRÍTICO"
         color = "#dc3545"
         mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo (> 60%)."
-        recomendacion = "⚠️ Recomendación: Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
+        recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
         
     elif pct_fijos >= 50 and pct_fijos <= 60:
         estado = "ACEPTABLE"
         color = "#ffc107"
         mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio (>= 50% y <= 60%)."
-        recomendacion = "✅ Recomendación: Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel (EXCELENTE)."
+        recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel (EXCELENTE)."
         
     elif pct_fijos < 50:
         estado = "EXCELENTE"
         color = "#28a745"
         mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Tienes una flexibilidad financiera sobresaliente (< 50%)."
-        recomendacion = "🌟 Recomendación: Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio. ¡Sigue así!"
+        recomendacion = "🌟 **Recomendación:** Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio. ¡Sigue así!"
 
     st.markdown(f"Estatus de tu estructura: <strong style='color:{color}; font-size: 1.5em;'>{estado}</strong>", unsafe_allow_html=True)
     st.markdown(mensaje)
-    st.markdown(f"**{recomendacion}**")
+    st.markdown(recomendacion)
     
     if estado != "EXCELENTE":
         st.divider()
@@ -233,21 +285,20 @@ if st.session_state.diagnostico_generado:
     st.divider()
     
     st.subheader("📥 Llévate tu diagnóstico")
-    st.write("Descarga un reporte profesional en PDF con tus resultados y estructura ideal.")
+    st.write("Descarga tu plan de acción estructurado en un documento profesional.")
     
-    # Generar los bytes del PDF
+    # Llamamos a la nueva función generadora de PDF
     pdf_bytes = crear_pdf(
         ingresos=ingresos,
         gastos_fijos=gastos_fijos,
         pct_fijos=pct_fijos,
         estado=estado,
-        recomendacion=recomendacion,
         ingreso_req_aceptable=ingreso_req_aceptable,
         ingreso_req_excelente=ingreso_req_excelente
     )
 
     st.download_button(
-        label="📄 Descargar Reporte PDF",
+        label="📄 Descargar Reporte PDF Ejecutivo",
         data=pdf_bytes,
         file_name="Diagnostico_Financiero.pdf",
         mime="application/pdf"
