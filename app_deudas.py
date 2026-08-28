@@ -34,7 +34,7 @@ def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, d
     def limpiar(texto):
         return str(texto).encode('latin-1', 'ignore').decode('latin-1')
 
-    # --- SECCIÓN 1: RESUMEN DE PARÁMETROS ---
+    # --- SECCIÓN 1: RESUMEN DE PARÁMETROS Y DIAGNÓSTICO ---
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 51, 102)
     pdf.cell(0, 8, limpiar('1. Resumen de Presupuesto y Estrategia'), 0, 1)
@@ -50,6 +50,22 @@ def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, d
     excedente_ini = presupuesto_mensual - monto_minimo_total
     pdf.cell(col_w, 6, limpiar(f'Bola de Nieve Inicial: ${excedente_ini:,.2f}'), 0, 0)
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
+
+    # Diagnóstico del estado financiero en el PDF
+    pct_pdf = (presupuesto_mensual / ingresos * 100) if ingresos > 0 else 0
+    if presupuesto_mensual > ingresos:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.set_text_color(139, 0, 0) # Rojo oscuro
+        pdf.cell(0, 6, limpiar(f'DIAGNOSTICO: BANCARROTA TECNICA - El presupuesto para deudas ({pct_pdf:.1f}%) supera los ingresos totales.'), 0, 1)
+    elif presupuesto_mensual > ingresos * 0.30:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.set_text_color(220, 108, 0) # Naranja
+        pdf.cell(0, 6, limpiar(f'DIAGNOSTICO: ESTRATEGIA AGRESIVA ({pct_pdf:.1f}%) - Se reasignan fondos de ahorro, inversion y gastos variables.'), 0, 1)
+    else:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.set_text_color(40, 167, 69) # Verde
+        pdf.cell(0, 6, limpiar(f'DIAGNOSTICO: PRESUPUESTO ESTANDAR ({pct_pdf:.1f}%) - Dentro del limite recomendado (<= 30%).'), 0, 1)
+
     pdf.ln(4)
 
     # --- SECCIÓN 2: TABLA DE PROYECCIÓN ---
@@ -57,7 +73,7 @@ def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, d
     pdf.set_text_color(0, 51, 102)
     pdf.cell(0, 8, limpiar('2. Proyeccion de Pagos Mes a Mes'), 0, 1)
 
-    # Cálculo dinámico del ancho de columnas para encajar en 277 mm de espacio impreso
+    # Cálculo dinámico del ancho de columnas
     num_cols = len(df_resultado.columns)
     w_deuda = max(25.0, 277.0 / (num_cols + 1))
     w_col = (277.0 - w_deuda) / (num_cols - 1)
@@ -93,7 +109,7 @@ def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, d
             else:
                 exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
                 if exc_val > 0:
-                    pdf.set_fill_color(232, 244, 253) # Azul claro para destacar inyección de excedente
+                    pdf.set_fill_color(232, 244, 253)
                     pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align, fill=True)
                 else:
                     pdf.cell(w, 5, limpiar(f'${val:,.2f}'), 1, 0, align)
@@ -121,7 +137,6 @@ def crear_pdf(ingresos, presupuesto_mensual, monto_minimo_total, df_resultado, d
         pdf.cell(w_col, 6, limpiar(f"${tot_exc:,.2f}"), 1, 0, 'R', fill=True)
     pdf.ln()
 
-    # Salida de bytes segura
     salida = pdf.output(dest='S')
     if isinstance(salida, str):
         return salida.encode('latin-1', 'ignore')
@@ -156,14 +171,12 @@ ingresos = st.sidebar.number_input(
     on_change=actualizar_presupuesto 
 )
 
-limite_presupuesto = ingresos * 0.30
-
+# SE PERMITE CUALQUIER CANTIDAD (SIN max_value)
 presupuesto_mensual = st.sidebar.number_input(
     "Monto destinado al pago de deudas", 
-    max_value=float(limite_presupuesto), 
     step=10.0,
     key="presupuesto_mensual", 
-    help="Se calcula automáticamente al 30% de tus ingresos, pero puedes ajustarlo hacia abajo."
+    help="Puedes ingresar cualquier monto. Si supera el 30%, el sistema asumirá reasignación de ahorro, inversión y gastos variables."
 )
 
 monto_minimo_total = st.sidebar.number_input(
@@ -181,8 +194,23 @@ else:
 st.sidebar.caption(f"Representa el **{porcentaje_representado:.1f}%** del monto destinado a deudas.")
 # ---------------------
 
-# Resumen del presupuesto
-st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
+# Resumen del presupuesto y análisis de estado
+pct_presupuesto = (presupuesto_mensual / ingresos * 100) if ingresos > 0 else 0
+st.write(f"Con un ingreso total de **\${ingresos:,.2f}**, tu presupuesto mensual para el pago de deudas es de **\${presupuesto_mensual:,.2f}** ({pct_presupuesto:.1f}% de tus ingresos).")
+
+# --- ADVERTENCIAS Y EVALUACIÓN DEL PRESUPUESTO ---
+if presupuesto_mensual > ingresos:
+    st.error(
+        f"🚨 **ALERTA DE BANCARROTA TÉCNICA:** El monto destinado al pago de deudas (**\${presupuesto_mensual:,.2f}**) "
+        f"supera tus ingresos totales (**\${ingresos:,.2f}**). Te encuentras en un estado de **bancarrota**, ya que tus obligaciones de "
+        f"pago superan la totalidad de lo que ganas. Aun así, a continuación se presenta el análisis matemático del plan de pagos."
+    )
+elif presupuesto_mensual > (ingresos * 0.30):
+    st.warning(
+        f"⚠️ **Aviso de Estrategia Agresiva:** El monto destinado (**\${presupuesto_mensual:,.2f}**) representa el **{pct_presupuesto:.1f}%** "
+        f"de tus ingresos, superando el límite estándar recomendado del 30%. La aplicación asume que estás recortando y reasignando fondos "
+        f"originalmente destinados a **ahorro, inversión y gastos variables** para atacar prioritariamente tus deudas."
+    )
 
 st.subheader("Ingresa tus Deudas")
 default_debts = pd.DataFrame({
@@ -205,7 +233,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
         total_pago_minimo = df_deudas["Pago Mínimo"].sum()
         
         if presupuesto_mensual < total_pago_minimo:
-            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar tus ingresos.")
+            st.error(f"Tu presupuesto mensual (**\${presupuesto_mensual:,.2f}**) es menor al pago mínimo requerido (**\${total_pago_minimo:,.2f}**). Necesitas aumentar el monto destinado o tus ingresos.")
         else:
             excedente_inicial = presupuesto_mensual - total_pago_minimo
             st.success(f"Tus pagos mínimos suman **\${total_pago_minimo:,.2f}**. Tienes un excedente (Bola de Nieve) de **\${excedente_inicial:,.2f}** para acelerar los pagos en el primer mes.")
