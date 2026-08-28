@@ -55,7 +55,7 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_r
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
     pdf.ln(6)
 
-    # --- NUEVA SECCIÓN: TABLA DE DEUDAS INICIALES ---
+    # --- SECCIÓN 2: TABLA DE DEUDAS INICIALES ---
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 51, 102)
     pdf.cell(0, 8, limpiar('2. Detalle de Deudas a Saldar'), 0, 1)
@@ -161,6 +161,35 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_deudas_iniciales, df_r
         return bytes(salida)
 
 # ==========================================================
+# FUNCIÓN LIMPIADORA DE MONTOS (EVITA ERRORES AL PEGAR)
+# ==========================================================
+def procesar_montos(val):
+    if pd.isna(val) or val == "":
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    
+    # Quitamos espacios y símbolos de moneda
+    val_str = str(val).strip().replace('$', '').replace(' ', '')
+    
+    # Manejamos los distintos formatos de miles y decimales
+    if ',' in val_str and '.' in val_str:
+        # Si la coma está después del punto (Ej: 1.250,50 -> 1250.50)
+        if val_str.rfind(',') > val_str.rfind('.'):
+            val_str = val_str.replace('.', '').replace(',', '.')
+        else:
+            # Si el punto está después de la coma (Ej: 1,250.50 -> 1250.50)
+            val_str = val_str.replace(',', '')
+    elif ',' in val_str:
+        # Si solo tiene coma, asumimos que es el decimal (Ej: 940,43 -> 940.43)
+        val_str = val_str.replace(',', '.')
+        
+    try:
+        return float(val_str)
+    except ValueError:
+        return 0.0
+
+# ==========================================================
 # INTERFAZ DE USUARIO (STREAMLIT)
 # ==========================================================
 
@@ -196,22 +225,33 @@ st.sidebar.caption(f"Representa el **{porcentaje_representado:.1f}%** del monto 
 st.write(f"Tu presupuesto mensual fijo para el pago de deudas es de **\${presupuesto_mensual:,.2f}**.")
 
 st.subheader("Ingresa tus Deudas")
-st.info("💡 **Tip:** Puedes copiar los datos desde Excel y pegarlos directamente en la tabla.")
+st.info("💡 **Tip:** Puedes copiar los datos (Texto y Montos) desde Excel y pegarlos directamente en la tabla.")
 
-# Estructura inicial vacía (o con ejemplos) para facilitar el pegado
+# Las cantidades se inician como TEXTO ("250.00") en lugar de números para evitar que 
+# Streamlit dañe el formato de las comas al pegar la información.
 default_debts = pd.DataFrame({
     "Deuda": ["Deuda #1", "Deuda #2", "Deuda #3", "Deuda #4", "Deuda #5"],
-    "Monto Inicial": [250.0, 300.0, 1000.0, 1000.0, 2000.0]
+    "Monto Inicial": ["250.00", "300.00", "1000.00", "1000.00", "2000.00"]
 })
 
-# El parámetro num_rows="dynamic" es vital para permitir copiar y pegar múltiples filas desde Excel
-edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
+# Configuramos la columna para que acepte texto plano (así respeta el Ctrl+C / Ctrl+V de Excel)
+edited_debts = st.data_editor(
+    default_debts, 
+    num_rows="dynamic", 
+    use_container_width=True,
+    column_config={
+        "Monto Inicial": st.column_config.TextColumn(
+            "Monto Inicial",
+            help="Puedes pegar números con comas desde tu Excel (ej: 940,43)"
+        )
+    }
+)
 
-# Limpiar filas vacías que puedan generarse al pegar mal los datos
+# APLICAMOS LA FUNCIÓN DE LIMPIEZA MATEMÁTICA
 edited_debts = edited_debts.dropna(subset=['Monto Inicial'])
-edited_debts['Monto Inicial'] = pd.to_numeric(edited_debts['Monto Inicial'], errors='coerce').fillna(0)
+edited_debts['Monto Inicial'] = edited_debts['Monto Inicial'].apply(procesar_montos)
 
-# SUMATORIA EN TIEMPO REAL
+# SUMATORIA EN TIEMPO REAL 
 total_deudas_ingresadas = edited_debts["Monto Inicial"].sum()
 st.metric(label="💰 Total Deuda Acumulada", value=f"${total_deudas_ingresadas:,.2f}")
 
@@ -347,7 +387,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 
                 st.markdown(html_tabla, unsafe_allow_html=True)
                 
-                st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
+                st.info(f"Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
                 
                 # --- DESCARGA DE REPORTE PDF CON FPDF ---
                 st.divider()
@@ -356,7 +396,7 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 pdf_bytes = crear_pdf(
                     presupuesto_mensual=presupuesto_mensual, 
                     monto_minimo_total=monto_minimo_total, 
-                    df_deudas_iniciales=df_deudas, # Pasamos la tabla ordenada de deudas
+                    df_deudas_iniciales=df_deudas, 
                     df_resultado=df_resultado, 
                     df_historial_excedentes=df_historial_excedentes, 
                     num_meses=len(historial_saldos)
