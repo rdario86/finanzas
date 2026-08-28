@@ -1,7 +1,88 @@
 import streamlit as st
 import pandas as pd
+from fpdf import FPDF
 
 st.set_page_config(page_title="Diagnóstico Financiero", page_icon="📊", layout="wide")
+
+# ==========================================================
+# FUNCIÓN PARA GENERAR EL REPORTE EN PDF
+# ==========================================================
+def crear_pdf(ingresos, gastos_fijos, pct_fijos, estado, recomendacion, ingreso_req_aceptable=None, ingreso_req_excelente=None):
+    class PDF(FPDF):
+        def header(self):
+            # Cabecera del documento
+            self.set_font('Arial', 'B', 15)
+            self.cell(0, 10, 'Diagnostico Financiero - Resultados', 0, 1, 'C')
+            self.set_font('Arial', 'I', 10)
+            self.cell(0, 10, 'Panel de Control - Ruben Nunez', 0, 1, 'C')
+            self.ln(5)
+
+    pdf = PDF()
+    pdf.add_page()
+    
+    # Función de ayuda para asegurar que los acentos en español se guarden bien en el PDF
+    def normalizar(texto):
+        return texto.encode('latin-1', 'replace').decode('latin-1')
+
+    # SECCIÓN 1: Resultados Actuales
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, normalizar('1. Tu Diagnóstico Actual'), 0, 1)
+    
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 8, normalizar(f'Ingresos Totales: ${ingresos:,.2f}'), 0, 1)
+    pdf.cell(0, 8, normalizar(f'Gastos Fijos Totales: ${gastos_fijos:,.2f}'), 0, 1)
+    pdf.cell(0, 8, normalizar(f'Peso de tus Gastos Fijos: {pct_fijos:.1f}%'), 0, 1)
+    pdf.ln(5)
+    
+    # SECCIÓN 2: Estatus y Recomendación
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, normalizar(f'ESTATUS: {estado}'), 0, 1)
+    
+    pdf.set_font('Arial', '', 12)
+    pdf.multi_cell(0, 8, normalizar(f'Recomendación: {recomendacion}'))
+    pdf.ln(10)
+    
+    # SECCIÓN 3: Plan de Acción (Metas)
+    if estado != "EXCELENTE":
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, normalizar('2. Plan de Acción: Metas de Ingreso'), 0, 1)
+        pdf.ln(2)
+        
+        # Meta Aceptable (Solo si está Crítico)
+        if estado in ["CRÍTICO", "CRÍTICO EXTREMO"] and ingreso_req_aceptable is not None:
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, normalizar('Meta ACEPTABLE (Fijos al 60%)'), 0, 1)
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(0, 8, normalizar(f'Ingreso Mínimo Requerido: ${ingreso_req_aceptable:,.2f}'), 0, 1)
+            
+            # Tabla / Distribución
+            pdf.cell(0, 8, normalizar(f' - Gastos Fijos (60%): ${gastos_fijos:,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Gastos Variables (20%): ${(ingreso_req_aceptable*0.20):,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Ahorro (10%): ${(ingreso_req_aceptable*0.10):,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Inversión (10%): ${(ingreso_req_aceptable*0.10):,.2f}'), 0, 1)
+            pdf.ln(5)
+        
+        # Meta Excelente (Siempre se muestra si no está ya en Excelente)
+        if ingreso_req_excelente is not None:
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, normalizar('Meta EXCELENTE (Fijos al 50%)'), 0, 1)
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(0, 8, normalizar(f'Ingreso Mínimo Requerido: ${ingreso_req_excelente:,.2f}'), 0, 1)
+            
+            # Tabla / Distribución
+            pdf.cell(0, 8, normalizar(f' - Gastos Fijos (50%): ${gastos_fijos:,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Gastos Variables (20%): ${(ingreso_req_excelente*0.20):,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Ahorro (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Inversión (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
+            pdf.cell(0, 8, normalizar(f' - Excedente Libre (10%): ${(ingreso_req_excelente*0.10):,.2f}'), 0, 1)
+            pdf.ln(5)
+            
+    # Retornar el archivo PDF en formato de bytes para el botón de descarga
+    return pdf.output(dest='S').encode('latin-1')
+
+# ==========================================================
+# INTERFAZ DE USUARIO (STREAMLIT)
+# ==========================================================
 
 # Encabezado principal
 st.title("Diagnóstico Financiero 📊")
@@ -22,7 +103,7 @@ st.divider()
 
 st.header("1. Ingresa tus datos mensuales")
 
-# Dos campos de entrada manual (Formateados a 2 decimales para mejor UX)
+# Dos campos de entrada manual
 col1, col2 = st.columns(2)
 with col1:
     ingresos = st.number_input("Ingresos Totales (\$)", min_value=0.0, value=1000.0, step=100.0, format="%.2f")
@@ -39,56 +120,52 @@ if st.button("Generar Diagnóstico", type="primary"):
         st.divider()
         st.header("2. Tu Diagnóstico Actual")
         
-        # El diagnóstico evalúa el peso de los fijos sobre los ingresos reales
         pct_fijos = (gastos_fijos / ingresos) * 100
         
-        # ==========================================================
-        # DIAGNÓSTICO: MANEJO DE DÉFICIT EXTREMO Y REGLAS ESTRICTAS
-        # ==========================================================
+        # Variables que necesitaremos para el PDF
+        ingreso_req_aceptable = None
+        ingreso_req_excelente = gastos_fijos / 0.50
+        
         if pct_fijos >= 100:
             estado = "CRÍTICO EXTREMO"
-            color = "#8b0000" # Rojo oscuro
+            color = "#8b0000"
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. ¡Tus compromisos fijos superan o igualan tu sueldo!"
-            recomendacion = "🚨 **Emergencia:** Estás en bancarrota técnica, asumiendo deudas solo para existir. Debes hacer recortes drásticos a tu estilo de vida base inmediatamente."
+            recomendacion = "🚨 Emergencia: Estás en bancarrota técnica, asumiendo deudas solo para existir. Debes hacer recortes drásticos a tu estilo de vida base inmediatamente."
             
         elif pct_fijos > 60:
             estado = "CRÍTICO"
-            color = "#dc3545" # Rojo
+            color = "#dc3545"
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Estás por encima del límite de riesgo (> 60%)."
-            recomendacion = "⚠️ **Recomendación:** Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
+            recomendacion = "⚠️ Recomendación: Tu estilo de vida base es demasiado costoso para tu nivel de ingresos actual. Revisa las metas de ingresos requeridos más abajo."
             
         elif pct_fijos >= 50 and pct_fijos <= 60:
             estado = "ACEPTABLE"
-            color = "#ffc107" # Amarillo
+            color = "#ffc107"
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Te mantienes en la zona de equilibrio (>= 50% y <= 60%)."
-            recomendacion = "✅ **Recomendación:** Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel (EXCELENTE)."
+            recomendacion = "✅ Recomendación: Tienes una estructura sana. Vigila que tus gastos fijos no suban y revisa abajo tu meta para pasar al siguiente nivel (EXCELENTE)."
             
         elif pct_fijos < 50:
             estado = "EXCELENTE"
-            color = "#28a745" # Verde
+            color = "#28a745"
             mensaje = f"Tus Gastos Fijos consumen el **{pct_fijos:.1f}%** de tus ingresos. Tienes una flexibilidad financiera sobresaliente (< 50%)."
-            recomendacion = "🌟 **Recomendación:** Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio. ¡Sigue así!"
+            recomendacion = "🌟 Recomendación: Tu estructura es robusta. Mantén tus gastos fijos controlados para maximizar tu capacidad de construir patrimonio. ¡Sigue así!"
 
         st.markdown(f"Estatus de tu estructura: <strong style='color:{color}; font-size: 1.5em;'>{estado}</strong>", unsafe_allow_html=True)
         st.markdown(mensaje)
-        st.markdown(recomendacion)
-        
-        # Variable para almacenar el ingreso excelente para el reporte
-        ingreso_req_excelente = gastos_fijos / 0.50
+        st.markdown(f"**{recomendacion}**")
         
         # ==========================================================
-        # CÁLCULO: METAS DE INGRESO CONDICIONALES
+        # CÁLCULO: METAS DE INGRESO CONDICIONALES EN PANTALLA
         # ==========================================================
         if estado != "EXCELENTE":
             st.divider()
             st.header("3. Plan de Acción: Metas de Ingreso")
             
-            if estado == "CRÍTICO" or estado == "CRÍTICO EXTREMO":
+            if estado in ["CRÍTICO", "CRÍTICO EXTREMO"]:
                 st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, estos son los ingresos mínimos requeridos para sanear tu estructura:".format(gastos_fijos))
                 col_a, col_b = st.columns(2)
                 
                 with col_a:
-                    # Meta Aceptable (Fijos al 60%)
                     ingreso_req_aceptable = gastos_fijos / 0.60
                     st.markdown(f"### 🟡 Meta ACEPTABLE")
                     st.write("Para que tus fijos representen el **60%**, tu ingreso mínimo requerido debe ser:")
@@ -100,19 +177,14 @@ if st.button("Generar Diagnóstico", type="primary"):
                     elif dif_ace < 0:
                         st.warning(f"⚠️ Te faltan **\$ {abs(dif_ace):,.2f}** mensuales para alcanzar esta meta.")
                     
-                    var_ace = ingreso_req_aceptable * 0.20
-                    aho_ace = ingreso_req_aceptable * 0.10
-                    inv_ace = ingreso_req_aceptable * 0.10
-                    
                     df_ace = pd.DataFrame({
                         "Distribución Ideal": ["Gastos Fijos (60%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)"],
-                        "Monto Meta": [gastos_fijos, var_ace, aho_ace, inv_ace]
+                        "Monto Meta": [gastos_fijos, ingreso_req_aceptable*0.20, ingreso_req_aceptable*0.10, ingreso_req_aceptable*0.10]
                     })
                     df_ace["Monto Meta"] = df_ace["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
                     st.table(df_ace)
 
                 with col_b:
-                    # Meta Excelente (Fijos al 50%)
                     st.markdown(f"### 🟢 Meta EXCELENTE")
                     st.write("Para que tus fijos representen el **50%**, tu ingreso mínimo requerido debe ser:")
                     st.markdown(f"<h3 style='color:#28a745;'>$ {ingreso_req_excelente:,.2f}</h3>", unsafe_allow_html=True)
@@ -123,14 +195,9 @@ if st.button("Generar Diagnóstico", type="primary"):
                     elif dif_exc < 0:
                         st.warning(f"⚠️ Te faltan **\$ {abs(dif_exc):,.2f}** mensuales para alcanzar esta meta.")
                     
-                    var_exc = ingreso_req_excelente * 0.20
-                    aho_exc = ingreso_req_excelente * 0.10
-                    inv_exc = ingreso_req_excelente * 0.10
-                    excedente_exc = ingreso_req_excelente * 0.10
-                    
                     df_exc = pd.DataFrame({
                         "Distribución Ideal": ["Gastos Fijos (50%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)", "Excedente Libre (10%)"],
-                        "Monto Meta": [gastos_fijos, var_exc, aho_exc, inv_exc, excedente_exc]
+                        "Monto Meta": [gastos_fijos, ingreso_req_excelente*0.20, ingreso_req_excelente*0.10, ingreso_req_excelente*0.10, ingreso_req_excelente*0.10]
                     })
                     df_exc["Monto Meta"] = df_exc["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
                     st.table(df_exc)
@@ -138,7 +205,6 @@ if st.button("Generar Diagnóstico", type="primary"):
             elif estado == "ACEPTABLE":
                 st.markdown("Tomando tus Gastos Fijos actuales de **\$ {:,.2f}** como un ancla inamovible, este es el ingreso mínimo requerido para llevar tu estructura al nivel óptimo:".format(gastos_fijos))
                 
-                # Se renderiza en una sola columna para centrar el contenido visualmente
                 col1_acep, col2_acep = st.columns([1.5, 1])
                 with col1_acep:
                     st.markdown(f"### 🟢 Meta para pasar a EXCELENTE")
@@ -151,46 +217,35 @@ if st.button("Generar Diagnóstico", type="primary"):
                     else:
                         st.info("🎯 Tus ingresos actuales están exactamente en esta meta.")
                     
-                    var_exc = ingreso_req_excelente * 0.20
-                    aho_exc = ingreso_req_excelente * 0.10
-                    inv_exc = ingreso_req_excelente * 0.10
-                    excedente_exc = ingreso_req_excelente * 0.10
-                    
                     df_exc = pd.DataFrame({
                         "Distribución Ideal": ["Gastos Fijos (50%)", "Variables (20%)", "Ahorro (10%)", "Inversión (10%)", "Excedente Libre (10%)"],
-                        "Monto Meta": [gastos_fijos, var_exc, aho_exc, inv_exc, excedente_exc]
+                        "Monto Meta": [gastos_fijos, ingreso_req_excelente*0.20, ingreso_req_excelente*0.10, ingreso_req_excelente*0.10, ingreso_req_excelente*0.10]
                     })
-                    
                     df_exc["Monto Meta"] = df_exc["Monto Meta"].apply(lambda x: f"$ {x:,.2f}")
                     st.table(df_exc)
 
         st.divider()
         
         # ==========================================================
-        # BOTÓN PARA DESCARGAR EL DIAGNÓSTICO
+        # SECCIÓN DE DESCARGA PDF
         # ==========================================================
         st.subheader("📥 Llévate tu diagnóstico")
-        st.write("Descarga un resumen de texto con tus resultados para tener siempre a mano tu meta de ingresos.")
+        st.write("Descarga un reporte profesional en PDF con tus resultados y estructura ideal.")
         
-        reporte = f"""=========================================
-DIAGNÓSTICO FINANCIERO - RESULTADOS
-=========================================
-Ingresos Actuales:       ${ingresos:,.2f}
-Gastos Fijos Actuales:   ${gastos_fijos:,.2f}
-Peso de tus Gastos Fijos: {pct_fijos:.1f}%
-
-ESTATUS ACTUAL: {estado}
-Recomendación: {recomendacion}
-=========================================
-"""
-        if estado != "EXCELENTE":
-            reporte += f"\nPLAN DE ACCIÓN - META EXCELENTE (50%):\n"
-            reporte += f"Para sanear tu estructura, tu Ingreso Mínimo Requerido debe ser: ${ingreso_req_excelente:,.2f}\n"
-            reporte += f"Diferencia con tu ingreso actual: ${abs(ingresos - ingreso_req_excelente):,.2f}\n"
+        # Generar los bytes del PDF usando la función que definimos arriba
+        pdf_bytes = crear_pdf(
+            ingresos=ingresos,
+            gastos_fijos=gastos_fijos,
+            pct_fijos=pct_fijos,
+            estado=estado,
+            recomendacion=recomendacion,
+            ingreso_req_aceptable=ingreso_req_aceptable,
+            ingreso_req_excelente=ingreso_req_excelente
+        )
 
         st.download_button(
-            label="📄 Descargar mi Plan Financiero (TXT)",
-            data=reporte,
-            file_name="Mi_Diagnostico_Financiero.txt",
-            mime="text/plain"
+            label="📄 Descargar Reporte PDF",
+            data=pdf_bytes,
+            file_name="Diagnostico_Financiero.pdf",
+            mime="application/pdf"
         )
