@@ -42,13 +42,17 @@ def crear_pdf(presupuesto_mensual, monto_minimo_total, df_resultado, df_historia
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', '', 10)
     
-    col_w = 130
+    col_w = 135
+    deuda_total_pdf = df_resultado['Monto Inicial'].sum()
     excedente_ini = presupuesto_mensual - monto_minimo_total
     
-    pdf.cell(col_w, 6, limpiar(f'Monto Destinado a Deudas: ${presupuesto_mensual:,.2f}'), 0, 0)
-    pdf.cell(col_w, 6, limpiar(f'Monto Pagos Minimos: ${monto_minimo_total:,.2f}'), 0, 1)
+    # Inclusión del Monto Total de Deudas al inicio del resumen
+    pdf.cell(col_w, 6, limpiar(f'Monto Total de Deudas: ${deuda_total_pdf:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Monto Destinado a Deudas: ${presupuesto_mensual:,.2f}'), 0, 1)
     
-    pdf.cell(col_w, 6, limpiar(f'Bola de Nieve Inicial: ${excedente_ini:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Monto Pagos Minimos: ${monto_minimo_total:,.2f}'), 0, 0)
+    pdf.cell(col_w, 6, limpiar(f'Bola de Nieve Inicial: ${excedente_ini:,.2f}'), 0, 1)
+    
     pdf.cell(col_w, 6, limpiar(f'Tiempo Estimado de Pago: {num_meses} meses'), 0, 1)
     pdf.ln(4)
 
@@ -171,6 +175,10 @@ default_debts = pd.DataFrame({
 
 edited_debts = st.data_editor(default_debts, num_rows="dynamic", use_container_width=True)
 
+# SUMATORIA EN TIEMPO REAL: Se calcula automáticamente al editar las filas
+total_deudas_ingresadas = edited_debts["Monto Inicial"].fillna(0).sum()
+st.metric(label="💰 Total Deuda Acumulada", value=f"${total_deudas_ingresadas:,.2f}")
+
 if st.button("Calcular Plan de Pagos", type="primary"):
     df_deudas = edited_debts[edited_debts["Monto Inicial"] > 0].copy()
     
@@ -235,91 +243,4 @@ if st.button("Calcular Plan de Pagos", type="primary"):
                 df_historial.columns = columnas_meses
                 
                 df_historial_excedentes = pd.DataFrame(historial_excedentes).T
-                df_historial_excedentes.columns = columnas_meses
-                
-                df_resultado = df_deudas[["Deuda", "Monto Inicial", "Pago Mínimo"]].copy()
-                df_resultado = pd.concat([df_resultado, df_historial], axis=1)
-                
-                st.subheader("Proyección de Pagos (Saldos al final de cada mes)")
-                st.write("*(Pasa el cursor sobre los montos de los meses para ver el excedente aplicado individualmente)*")
-                
-                # Generación de tabla HTML personalizada
-                html_tabla = '<div class="tabla-custom" style="overflow-x: auto; border: 1px solid #e6e9ef; border-radius: 8px; padding: 15px; max-height: 450px;">\n'
-                html_tabla += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: sans-serif; color: inherit;">\n'
-                
-                # Encabezado
-                html_tabla += '<thead>\n<tr style="background-color: #f0f2f6; border-bottom: 2px solid #ddd; color: #31333F;">\n'
-                for col in df_resultado.columns:
-                    align = 'left' if col == 'Deuda' else 'right'
-                    html_tabla += f'<th style="padding: 8px 12px; text-align: {align};">{col}</th>\n'
-                html_tabla += '</tr>\n</thead>\n'
-                
-                # Cuerpo de la tabla
-                html_tabla += '<tbody>\n'
-                for idx, row in df_resultado.iterrows():
-                    html_tabla += '<tr style="border-bottom: 1px solid #eee;">\n'
-                    for col in df_resultado.columns:
-                        val = row[col]
-                        if col == 'Deuda':
-                            html_tabla += f'<td style="padding: 8px 12px; text-align: left; font-weight: bold;">{val}</td>\n'
-                        elif col in ['Monto Inicial', 'Pago Mínimo']:
-                            html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
-                        else:
-                            exc_val = df_historial_excedentes.loc[idx, col] if col in df_historial_excedentes.columns else 0
-                            if exc_val > 0:
-                                tooltip_text = f"Excedente aplicado: ${exc_val:,.2f}"
-                                html_tabla += f'<td style="padding: 8px 12px; text-align: right; cursor: help; background-color: rgba(24, 144, 255, 0.1);" title="{tooltip_text}">${val:,.2f}</td>\n'
-                            else:
-                                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${val:,.2f}</td>\n'
-                    html_tabla += '</tr>\n'
-                html_tabla += '</tbody>\n'
-                
-                # Pie de página de la tabla
-                html_tabla += '<tfoot>\n'
-                
-                # 1. TOTAL SALDOS
-                html_tabla += '<tr style="border-top: 2px solid #a6a8b6; background-color: #f0f2f6; font-weight: bold; color: #31333F;">\n'
-                html_tabla += '<td style="padding: 8px 12px; text-align: left;">TOTAL SALDOS</td>\n'
-                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Monto Inicial"].sum():,.2f}</td>\n'
-                html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado["Pago Mínimo"].sum():,.2f}</td>\n'
-                
-                for col in columnas_meses:
-                    html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${df_resultado[col].sum():,.2f}</td>\n'
-                html_tabla += '</tr>\n'
-                
-                # 2. EXCEDENTE APLICADO
-                html_tabla += '<tr style="background-color: #e8f4fd; font-weight: bold; color: #0056b3;">\n'
-                html_tabla += '<td style="padding: 8px 12px; text-align: left;">EXCEDENTE APLICADO</td>\n'
-                html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
-                html_tabla += '<td style="padding: 8px 12px; text-align: center;">-</td>\n'
-                
-                for col in columnas_meses:
-                    total_excedente_mes = df_historial_excedentes[col].sum()
-                    html_tabla += f'<td style="padding: 8px 12px; text-align: right;">${total_excedente_mes:,.2f}</td>\n'
-                html_tabla += '</tr>\n'
-                
-                html_tabla += '</tfoot>\n'
-                html_tabla += '</table>\n</div>'
-                
-                st.markdown(html_tabla, unsafe_allow_html=True)
-                
-                st.info(f"¡Felicidades! Manteniendo esta disciplina, lograrás liquidar todas estas deudas en **{len(historial_saldos)} meses**.")
-                
-                # --- DESCARGA DE REPORTE PDF CON FPDF ---
-                st.divider()
-                st.subheader("📥 Llévate tu plan de pagos")
-                
-                pdf_bytes = crear_pdf(
-                    presupuesto_mensual=presupuesto_mensual, 
-                    monto_minimo_total=monto_minimo_total, 
-                    df_resultado=df_resultado, 
-                    df_historial_excedentes=df_historial_excedentes, 
-                    num_meses=len(historial_saldos)
-                )
-                
-                st.download_button(
-                    label="📄 Descargar Reporte PDF Ejecutivo",
-                    data=pdf_bytes,
-                    file_name="Plan_de_Pagos_Bola_de_Nieve.pdf",
-                    mime="application/pdf"
-                )
+                df_historial_
