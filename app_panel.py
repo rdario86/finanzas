@@ -23,26 +23,22 @@ def guardar_datos(df):
     df.to_excel(ARCHIVO_DATOS, index=False, engine='openpyxl')
 
 st.set_page_config(page_title="Control Mensual", layout="wide")
-st.title("💵 Panel de Control de Ingresos y Gastos")
+st.title("📊 Panel de Control de Ingresos y Gastos")
 
 # --- BARRA LATERAL: IMPORTACIÓN Y RESPALDO ---
 st.sidebar.header("Gestión de Base de Datos")
 
-# Módulo para cargar un archivo Excel existente
 archivo_subido = st.sidebar.file_uploader("📂 Importar archivo anterior (.xlsx)", type=["xlsx"])
 
-# Si el usuario sube un archivo, leemos ese archivo y lo guardamos como el nuevo estado local
 if archivo_subido is not None:
     try:
         df_importado = pd.read_excel(archivo_subido)
-        # Nos aseguramos que tenga el formato de fecha correcto
         df_importado['Fecha'] = pd.to_datetime(df_importado['Fecha']).dt.date
-        guardar_datos(df_importado) # Sobrescribe el local con el subido
+        guardar_datos(df_importado) 
         st.sidebar.success("¡Base de datos importada exitosamente!")
     except Exception as e:
         st.sidebar.error(f"Error al importar: {e}")
 
-# Cargamos el DataFrame principal (ya sea el local que teníamos, o el que acabamos de importar)
 df = cargar_datos()
 
 st.sidebar.markdown("---")
@@ -51,12 +47,15 @@ st.sidebar.markdown("---")
 st.sidebar.header("Registrar Movimiento")
 
 fecha = st.sidebar.date_input("Fecha", datetime.today())
-categoria = st.sidebar.selectbox("Categoría", ["Ingreso", "Gasto"])
+categoria = st.sidebar.selectbox("Categoría", ["Ingreso", "Gasto", "Reserva"])
 
+# Lógica condicional actualizada con la categoría Reserva
 if categoria == "Ingreso":
     opciones_tipo = ["Ordinario", "Extraordinario"]
-else:
+elif categoria == "Gasto":
     opciones_tipo = ["Gasto Fijo", "Gasto Variable", "Pago de Deudas"]
+else:
+    opciones_tipo = ["Fondo", "Ahorro"]
 
 tipo = st.sidebar.selectbox("Tipo", opciones_tipo)
 descripcion = st.sidebar.text_input("Descripción")
@@ -101,7 +100,6 @@ if os.path.exists(ARCHIVO_DATOS):
 st.subheader("Resumen General")
 
 df_temp = df.copy()
-# Evitar error si el df está vacío al intentar usar str.contains o formatos
 if not df_temp.empty:
     df_temp['Fecha_DT'] = pd.to_datetime(df_temp['Fecha'])
 
@@ -128,14 +126,20 @@ if not df_filtrado.empty:
     
     df_filtrado = df_filtrado.drop(columns=['Fecha_DT'])
 
+# Cálculos independientes para Ingresos, Gastos y Reservas
 ingresos_totales = df_filtrado[df_filtrado['Categoría'] == 'Ingreso']['Monto'].sum() if not df_filtrado.empty else 0
 gastos_totales = df_filtrado[df_filtrado['Categoría'] == 'Gasto']['Monto'].sum() if not df_filtrado.empty else 0
+reservas_totales = df_filtrado[df_filtrado['Categoría'] == 'Reserva']['Monto'].sum() if not df_filtrado.empty else 0
+
+# El saldo neto sigue siendo estrictamente Ingresos - Gastos
 saldo = ingresos_totales - gastos_totales
 
-col1, col2, col3 = st.columns(3)
+# Mostramos 4 columnas en el panel superior
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Ingresos", f"${ingresos_totales:,.2f}")
 col2.metric("Total Gastos", f"${gastos_totales:,.2f}")
 col3.metric("Saldo Neto", f"${saldo:,.2f}")
+col4.metric("Total Reservado", f"${reservas_totales:,.2f}")
 
 st.markdown("---")
 
