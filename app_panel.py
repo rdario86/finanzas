@@ -111,17 +111,29 @@ col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
 if not df_temp.empty:
     años_disponibles = sorted(df_temp['Fecha_DT'].dt.year.unique().tolist())
     categorias_disp = sorted(df_temp['Categoría'].unique().tolist())
-    tipos_disp = sorted(df_temp['Tipo'].unique().tolist())
     medios_disp = sorted(df_temp['Medio de Pago'].unique().tolist())
 else:
-    años_disponibles, categorias_disp, tipos_disp, medios_disp = [], [], [], []
+    años_disponibles, categorias_disp, medios_disp = [], [], []
 
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 años_seleccionados = col_f1.multiselect("Año", años_disponibles)
 meses_seleccionados = col_f2.multiselect("Mes", meses_nombres)
 categorias_seleccionadas = col_f3.multiselect("Categoría", categorias_disp)
-tipos_seleccionados = col_f4.multiselect("Tipo", tipos_disp)
+
+# Lógica dependiente para el filtro "Tipo"
+if categorias_seleccionadas:
+    # Si hay categorías seleccionadas, buscamos los tipos que pertenecen a ellas en la base de datos
+    tipos_disp = sorted(df_temp[df_temp['Categoría'].isin(categorias_seleccionadas)]['Tipo'].unique().tolist())
+    bloquear_tipo = False
+    mensaje_tipo = ""
+else:
+    # Si no hay categoría, vaciamos las opciones y bloqueamos el selector
+    tipos_disp = []
+    bloquear_tipo = True
+    mensaje_tipo = "Selecciona una Categoría primero"
+
+tipos_seleccionados = col_f4.multiselect("Tipo", tipos_disp, disabled=bloquear_tipo, help=mensaje_tipo)
 medios_seleccionados = col_f5.multiselect("Medio de Pago", medios_disp)
 
 # Aplicar los filtros condicionalmente
