@@ -49,12 +49,13 @@ st.sidebar.header("Registrar Movimiento")
 fecha = st.sidebar.date_input("Fecha", datetime.today())
 categoria = st.sidebar.selectbox("Categoría", ["Ingreso", "Gasto", "Reserva"])
 
+# Se añadieron las opciones solicitadas para la categoría Reserva
 if categoria == "Ingreso":
     opciones_tipo = ["Ordinario", "Extraordinario"]
 elif categoria == "Gasto":
     opciones_tipo = ["Gasto Fijo", "Gasto Variable", "Pago de Deudas"]
 else:
-    opciones_tipo = ["Fondo", "Ahorro"]
+    opciones_tipo = ["Ahorro", "Fondo", "Inversión"]
 
 tipo = st.sidebar.selectbox("Tipo", opciones_tipo)
 descripcion = st.sidebar.text_input("Descripción")
@@ -121,14 +122,11 @@ años_seleccionados = col_f1.multiselect("Año", años_disponibles)
 meses_seleccionados = col_f2.multiselect("Mes", meses_nombres)
 categorias_seleccionadas = col_f3.multiselect("Categoría", categorias_disp)
 
-# Lógica dependiente para el filtro "Tipo"
 if categorias_seleccionadas:
-    # Si hay categorías seleccionadas, buscamos los tipos que pertenecen a ellas en la base de datos
     tipos_disp = sorted(df_temp[df_temp['Categoría'].isin(categorias_seleccionadas)]['Tipo'].unique().tolist())
     bloquear_tipo = False
     mensaje_tipo = ""
 else:
-    # Si no hay categoría, vaciamos las opciones y bloqueamos el selector
     tipos_disp = []
     bloquear_tipo = True
     mensaje_tipo = "Selecciona una Categoría primero"
