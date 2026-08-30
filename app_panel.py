@@ -49,7 +49,6 @@ st.sidebar.header("Registrar Movimiento")
 fecha = st.sidebar.date_input("Fecha", datetime.today())
 categoria = st.sidebar.selectbox("Categoría", ["Ingreso", "Gasto", "Reserva"])
 
-# Lógica condicional actualizada con la categoría Reserva
 if categoria == "Ingreso":
     opciones_tipo = ["Ordinario", "Extraordinario"]
 elif categoria == "Gasto":
@@ -103,38 +102,58 @@ df_temp = df.copy()
 if not df_temp.empty:
     df_temp['Fecha_DT'] = pd.to_datetime(df_temp['Fecha'])
 
-col_filtro1, col_filtro2 = st.columns(2)
+# --- SECCIÓN DE FILTROS MÚLTIPLES ---
+st.markdown("##### 🔍 Filtros de Búsqueda")
+st.caption("Deja los campos en blanco para incluir todos los registros.")
+
+col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
 
 if not df_temp.empty:
     años_disponibles = sorted(df_temp['Fecha_DT'].dt.year.unique().tolist())
+    categorias_disp = sorted(df_temp['Categoría'].unique().tolist())
+    tipos_disp = sorted(df_temp['Tipo'].unique().tolist())
+    medios_disp = sorted(df_temp['Medio de Pago'].unique().tolist())
 else:
-    años_disponibles = [datetime.today().year]
+    años_disponibles, categorias_disp, tipos_disp, medios_disp = [], [], [], []
 
-año_seleccionado = col_filtro1.selectbox("Filtrar por Año", ["Todos"] + años_disponibles)
-meses = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-mes_seleccionado = col_filtro2.selectbox("Filtrar por Mes", meses)
+meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
+años_seleccionados = col_f1.multiselect("Año", años_disponibles)
+meses_seleccionados = col_f2.multiselect("Mes", meses_nombres)
+categorias_seleccionadas = col_f3.multiselect("Categoría", categorias_disp)
+tipos_seleccionados = col_f4.multiselect("Tipo", tipos_disp)
+medios_seleccionados = col_f5.multiselect("Medio de Pago", medios_disp)
+
+# Aplicar los filtros condicionalmente
 df_filtrado = df_temp.copy()
 
 if not df_filtrado.empty:
-    if año_seleccionado != "Todos":
-        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.year == año_seleccionado]
+    if años_seleccionados:
+        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.year.isin(años_seleccionados)]
 
-    if mes_seleccionado != "Todos":
-        mes_numero = meses.index(mes_seleccionado) 
-        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.month == mes_numero]
+    if meses_seleccionados:
+        meses_numeros = [meses_nombres.index(m) + 1 for m in meses_seleccionados]
+        df_filtrado = df_filtrado[df_filtrado['Fecha_DT'].dt.month.isin(meses_numeros)]
+        
+    if categorias_seleccionadas:
+        df_filtrado = df_filtrado[df_filtrado['Categoría'].isin(categorias_seleccionadas)]
+        
+    if tipos_seleccionados:
+        df_filtrado = df_filtrado[df_filtrado['Tipo'].isin(tipos_seleccionados)]
+        
+    if medios_seleccionados:
+        df_filtrado = df_filtrado[df_filtrado['Medio de Pago'].isin(medios_seleccionados)]
     
     df_filtrado = df_filtrado.drop(columns=['Fecha_DT'])
 
-# Cálculos independientes para Ingresos, Gastos y Reservas
+# Cálculos de métricas con los datos filtrados
 ingresos_totales = df_filtrado[df_filtrado['Categoría'] == 'Ingreso']['Monto'].sum() if not df_filtrado.empty else 0
 gastos_totales = df_filtrado[df_filtrado['Categoría'] == 'Gasto']['Monto'].sum() if not df_filtrado.empty else 0
 reservas_totales = df_filtrado[df_filtrado['Categoría'] == 'Reserva']['Monto'].sum() if not df_filtrado.empty else 0
-
-# El saldo neto sigue siendo estrictamente Ingresos - Gastos
 saldo = ingresos_totales - gastos_totales
 
-# Mostramos 4 columnas en el panel superior
+st.markdown("---")
+
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Ingresos", f"${ingresos_totales:,.2f}")
 col2.metric("Total Gastos", f"${gastos_totales:,.2f}")
@@ -149,8 +168,6 @@ st.subheader("Historial de Movimientos")
 if df.empty:
     st.info("La base de datos está vacía. Registra tu primer movimiento o importa un archivo Excel.")
 else:
-    st.info("💡 **Tip:** Marca la casilla 'Seleccionar' para borrar registros. Los datos mostrados corresponden a los filtros aplicados arriba.")
-
     df_visual = df_filtrado.copy()
     df_visual.insert(0, "Seleccionar", False)
     columnas_datos = df.columns.tolist()
